@@ -14,8 +14,8 @@
 // - **Borrowing**: Working with references to avoid unnecessary cloning
 // - **Trait Usage**: Using Display-like patterns for formatting
 
+use crate::task::{Priority, Task, TimeHorizon};
 use colored::*;
-use crate::task::{Task, TimeHorizon, Priority};
 
 /// Formats a single task for compact display
 ///
@@ -65,16 +65,16 @@ pub fn format_task_line(task: &Task) -> String {
     // Determine the checkbox symbol based on completion status
     // Pattern matching is Rust's way of handling different cases
     let checkbox = if task.completed {
-        "[✓]".green()  // Green checkmark for completed tasks
+        "[✓]".green() // Green checkmark for completed tasks
     } else {
-        "[ ]".normal()  // Normal color for incomplete tasks
+        "[ ]".normal() // Normal color for incomplete tasks
     };
-    
+
     // Extract the first 6 characters of the task ID for brevity
     // UUIDs are 36 characters long, but 6 is enough for user identification
     // The get() method returns Option<&str>, and unwrap_or() provides a fallback
     let short_id = task.id.get(..6).unwrap_or(&task.id);
-    
+
     // Format the priority with color coding
     // High priority is red, medium is yellow, low is dimmed
     let priority_str = match task.priority {
@@ -82,10 +82,16 @@ pub fn format_task_line(task: &Task) -> String {
         Priority::Medium => format!("[{}]", "MED ".yellow()),
         Priority::Low => format!("[{}]", "LOW ".dimmed()),
     };
-    
+
     // Combine all parts into a single formatted line
     // The format!() macro creates a new String with the interpolated values
-    format!("{} {} {} {}", checkbox, short_id.dimmed(), priority_str, task.description)
+    format!(
+        "{} {} {} {}",
+        checkbox,
+        short_id.dimmed(),
+        priority_str,
+        task.description
+    )
 }
 
 /// Displays tasks grouped by time horizon
@@ -140,41 +146,42 @@ pub fn display_tasks(tasks: &[&Task], show_completed: bool) {
         (TimeHorizon::MidTerm, "MID-TERM TASKS"),
         (TimeHorizon::LongTerm, "LONG-TERM TASKS"),
     ];
-    
+
     // Track if we've displayed any tasks (for formatting)
     let mut displayed_any = false;
-    
+
     // Iterate through each time horizon
     // The iter() method creates an iterator over references to the array elements
     for (horizon, header) in horizons.iter() {
         // Filter tasks by this time horizon
         // The filter() method creates a new iterator that only yields matching elements
         // We use a closure |task| to define the filtering logic
-        let mut horizon_tasks: Vec<&Task> = tasks.iter()
+        let mut horizon_tasks: Vec<&Task> = tasks
+            .iter()
             .filter(|task| task.time_horizon == *horizon)
             .filter(|task| show_completed || !task.completed)
-            .copied()  // Convert &&Task to &Task
+            .copied() // Convert &&Task to &Task
             .collect();
-        
+
         // Skip this horizon if there are no tasks
         if horizon_tasks.is_empty() {
             continue;
         }
-        
+
         // Sort tasks by priority (high to low) within this horizon
         // sort_by_key() takes a closure that extracts the sort key from each element
         // We use Reverse to sort in descending order (high priority first)
         horizon_tasks.sort_by_key(|task| std::cmp::Reverse(task.priority));
-        
+
         // Add spacing between groups (except before the first group)
         if displayed_any {
-            println!();  // Print a blank line
+            println!(); // Print a blank line
         }
         displayed_any = true;
-        
+
         // Print the horizon header in bold cyan
         println!("{}", header.cyan().bold());
-        
+
         // Print each task in this horizon
         // The for loop automatically calls into_iter() on the Vec
         for task in horizon_tasks {
@@ -183,7 +190,7 @@ pub fn display_tasks(tasks: &[&Task], show_completed: bool) {
             println!("  {}", format_task_line(task));
         }
     }
-    
+
     // If no tasks were displayed, show a message
     if !displayed_any {
         println!("{}", "No tasks to display.".dimmed());
@@ -227,12 +234,12 @@ pub fn display_task_detail(task: &Task) {
     // Print a header
     println!("{}", "Task Details:".bold().underline());
     println!();
-    
+
     // Print each field with a label
     // We use format!() to create strings and then print them
     println!("  {}: {}", "ID".bold(), task.id.dimmed());
     println!("  {}: {}", "Description".bold(), task.description);
-    
+
     // Format the time horizon as a readable string
     let horizon_str = match task.time_horizon {
         TimeHorizon::ShortTerm => "Short-term (day-to-day)",
@@ -240,7 +247,7 @@ pub fn display_task_detail(task: &Task) {
         TimeHorizon::LongTerm => "Long-term (within a year)",
     };
     println!("  {}: {}", "Time Horizon".bold(), horizon_str);
-    
+
     // Format the priority with color coding
     let priority_str = match task.priority {
         Priority::High => "High".red().bold(),
@@ -248,7 +255,7 @@ pub fn display_task_detail(task: &Task) {
         Priority::Low => "Low".dimmed(),
     };
     println!("  {}: {}", "Priority".bold(), priority_str);
-    
+
     // Format the completion status with color coding
     let status_str = if task.completed {
         "Completed ✓".green().bold()
@@ -256,7 +263,7 @@ pub fn display_task_detail(task: &Task) {
         "Incomplete".normal()
     };
     println!("  {}: {}", "Status".bold(), status_str);
-    
+
     // Print the creation timestamp
     println!("  {}: {}", "Created".bold(), task.created_at.dimmed());
 }
@@ -293,13 +300,13 @@ pub fn display_contexts(contexts: &[&str], active: &str) {
     // Print a header
     println!("{}", "Available Contexts:".bold().underline());
     println!();
-    
+
     // Check if there are any contexts to display
     if contexts.is_empty() {
         println!("{}", "  No contexts available.".dimmed());
         return;
     }
-    
+
     // Iterate through each context name
     for context_name in contexts.iter() {
         // Check if this is the active context
@@ -312,7 +319,7 @@ pub fn display_contexts(contexts: &[&str], active: &str) {
             println!("  {} {}", "○".dimmed(), context_name);
         }
     }
-    
+
     // Print a legend
     println!();
     println!("{}", "  ● = active context".dimmed());
@@ -321,7 +328,7 @@ pub fn display_contexts(contexts: &[&str], active: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::task::{Task, TimeHorizon, Priority};
+    use crate::task::{Priority, Task, TimeHorizon};
 
     #[test]
     fn test_format_task_line_incomplete() {
@@ -329,11 +336,11 @@ mod tests {
         let task = Task::new(
             "Test task".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         );
-        
+
         let line = format_task_line(&task);
-        
+
         // Verify the line contains expected elements
         // Note: We can't easily test color codes, so we check for content
         assert!(line.contains("[ ]"));
@@ -347,12 +354,12 @@ mod tests {
         let mut task = Task::new(
             "Completed task".to_string(),
             TimeHorizon::MidTerm,
-            Priority::Medium
+            Priority::Medium,
         );
         task.mark_complete();
-        
+
         let line = format_task_line(&task);
-        
+
         // Verify the line contains expected elements
         assert!(line.contains("[✓]"));
         assert!(line.contains("Completed task"));
@@ -365,11 +372,11 @@ mod tests {
         let task = Task::new(
             "Low priority task".to_string(),
             TimeHorizon::LongTerm,
-            Priority::Low
+            Priority::Low,
         );
-        
+
         let line = format_task_line(&task);
-        
+
         // Verify the line contains expected elements
         assert!(line.contains("[ ]"));
         assert!(line.contains("Low priority task"));
@@ -379,18 +386,14 @@ mod tests {
     #[test]
     fn test_format_task_line_short_id() {
         // Test that the task ID is shortened
-        let task = Task::new(
-            "Test".to_string(),
-            TimeHorizon::ShortTerm,
-            Priority::Medium
-        );
-        
+        let task = Task::new("Test".to_string(), TimeHorizon::ShortTerm, Priority::Medium);
+
         let line = format_task_line(&task);
-        
+
         // The line should contain the first 6 characters of the ID
         let short_id = &task.id[..6];
         assert!(line.contains(short_id));
-        
+
         // The line should not contain the full ID (36 characters)
         // We check that it doesn't contain a substring that would only appear in the full ID
         let full_id_suffix = &task.id[6..];
@@ -401,7 +404,7 @@ mod tests {
     fn test_display_tasks_empty() {
         // Test displaying an empty task list
         let tasks: Vec<&Task> = vec![];
-        
+
         // This should not panic
         display_tasks(&tasks, true);
     }
@@ -412,10 +415,10 @@ mod tests {
         let task = Task::new(
             "Single task".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         );
         let tasks = vec![&task];
-        
+
         // This should not panic
         display_tasks(&tasks, true);
     }
@@ -426,9 +429,9 @@ mod tests {
         let task1 = Task::new("Short".to_string(), TimeHorizon::ShortTerm, Priority::High);
         let task2 = Task::new("Mid".to_string(), TimeHorizon::MidTerm, Priority::Medium);
         let task3 = Task::new("Long".to_string(), TimeHorizon::LongTerm, Priority::Low);
-        
+
         let tasks = vec![&task1, &task2, &task3];
-        
+
         // This should not panic
         display_tasks(&tasks, true);
     }
@@ -436,12 +439,20 @@ mod tests {
     #[test]
     fn test_display_tasks_filter_completed() {
         // Test that completed tasks are filtered when show_completed is false
-        let task1 = Task::new("Incomplete".to_string(), TimeHorizon::ShortTerm, Priority::High);
-        let mut task2 = Task::new("Complete".to_string(), TimeHorizon::ShortTerm, Priority::High);
+        let task1 = Task::new(
+            "Incomplete".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::High,
+        );
+        let mut task2 = Task::new(
+            "Complete".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::High,
+        );
         task2.mark_complete();
-        
+
         let tasks = vec![&task1, &task2];
-        
+
         // This should not panic and should only show incomplete tasks
         display_tasks(&tasks, false);
     }
@@ -452,9 +463,9 @@ mod tests {
         let task = Task::new(
             "Detailed task".to_string(),
             TimeHorizon::MidTerm,
-            Priority::High
+            Priority::High,
         );
-        
+
         // This should not panic
         display_task_detail(&task);
     }
@@ -465,10 +476,10 @@ mod tests {
         let mut task = Task::new(
             "Completed task".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::Low
+            Priority::Low,
         );
         task.mark_complete();
-        
+
         // This should not panic
         display_task_detail(&task);
     }
@@ -477,7 +488,7 @@ mod tests {
     fn test_display_contexts_empty() {
         // Test displaying an empty context list
         let contexts: Vec<&str> = vec![];
-        
+
         // This should not panic
         display_contexts(&contexts, "default");
     }
@@ -486,7 +497,7 @@ mod tests {
     fn test_display_contexts_single() {
         // Test displaying a single context
         let contexts = vec!["default"];
-        
+
         // This should not panic
         display_contexts(&contexts, "default");
     }
@@ -495,7 +506,7 @@ mod tests {
     fn test_display_contexts_multiple() {
         // Test displaying multiple contexts
         let contexts = vec!["default", "work", "personal"];
-        
+
         // This should not panic
         display_contexts(&contexts, "work");
     }
@@ -504,7 +515,7 @@ mod tests {
     fn test_display_contexts_active_indicator() {
         // Test that the active context is indicated
         let contexts = vec!["default", "work", "personal"];
-        
+
         // This should not panic and should highlight "work" as active
         display_contexts(&contexts, "work");
     }

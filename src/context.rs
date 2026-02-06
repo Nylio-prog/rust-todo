@@ -1,9 +1,9 @@
 // Context module - manages project contexts and their associated tasks
 // This module demonstrates Rust's HashMap usage, borrowing patterns, and error handling
 
+use crate::task::Task;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::task::Task;
 
 /// Represents a project context containing tasks
 ///
@@ -34,7 +34,7 @@ use crate::task::Task;
 pub struct Context {
     /// The name of this context
     pub name: String,
-    
+
     /// The tasks belonging to this context
     pub tasks: Vec<Task>,
 }
@@ -67,7 +67,7 @@ impl Context {
     pub fn new(name: String) -> Self {
         Self {
             name,
-            tasks: Vec::new(),  // Create an empty vector for tasks
+            tasks: Vec::new(), // Create an empty vector for tasks
         }
     }
 
@@ -257,7 +257,7 @@ impl Context {
         // Find the index of the task with the given ID
         // position() returns Some(index) if found, None otherwise
         let position = self.tasks.iter().position(|task| task.id == id);
-        
+
         // Use match to handle the Option
         match position {
             Some(index) => {
@@ -370,7 +370,7 @@ impl Context {
     pub fn sorted_tasks(&self) -> Vec<&Task> {
         // Create a Vec of references to all tasks
         let mut tasks: Vec<&Task> = self.tasks.iter().collect();
-        
+
         // Sort by time horizon first, then by priority (high to low) within each horizon
         // We use sort_by_key with a tuple for multi-level sorting
         // For priority, we want high to low, so we reverse the comparison
@@ -381,7 +381,7 @@ impl Context {
             // We want high priority first, so we use Reverse
             (task.time_horizon, std::cmp::Reverse(task.priority))
         });
-        
+
         tasks
     }
 }
@@ -425,7 +425,7 @@ impl Context {
 pub struct ContextManager {
     /// All contexts, indexed by name
     pub contexts: HashMap<String, Context>,
-    
+
     /// The name of the currently active context
     pub active_context: String,
 }
@@ -495,14 +495,14 @@ impl ContextManager {
     pub fn new() -> Self {
         // Create an empty HashMap to store contexts
         let mut contexts = HashMap::new();
-        
+
         // Create the default context
         let default_context = Context::new("default".to_string());
-        
+
         // Insert the default context into the HashMap
         // The key is the context name, the value is the Context object
         contexts.insert("default".to_string(), default_context);
-        
+
         // Return the ContextManager with the default context active
         Self {
             contexts,
@@ -549,7 +549,7 @@ impl ContextManager {
     /// use rust_todo::context::ContextManager;
     ///
     /// let mut manager = ContextManager::new();
-    /// 
+    ///
     /// // Create a new context
     /// let result = manager.create_context("work".to_string());
     /// assert!(result.is_ok());
@@ -566,14 +566,14 @@ impl ContextManager {
             // Context already exists - return an error
             return Err(crate::error::AppError::ContextAlreadyExists(name));
         }
-        
+
         // Create a new context with the given name
         let context = Context::new(name.clone());
-        
+
         // Insert the context into the HashMap
         // insert() takes ownership of both the key and value
         self.contexts.insert(name, context);
-        
+
         // Return success
         Ok(())
     }
@@ -632,11 +632,11 @@ impl ContextManager {
             // Context not found - return an error
             return Err(crate::error::AppError::ContextNotFound(name.to_string()));
         }
-        
+
         // Update the active context
         // We create a new String from the &str
         self.active_context = name.to_string();
-        
+
         // Return success
         Ok(())
     }
@@ -708,26 +708,27 @@ impl ContextManager {
         if !self.contexts.contains_key(name) {
             return Err(crate::error::AppError::ContextNotFound(name.to_string()));
         }
-        
+
         // Check if this is the last context
         if self.contexts.len() <= 1 {
             return Err(crate::error::AppError::CannotDeleteLastContext);
         }
-        
+
         // Check if this is the active context
         if self.active_context == name {
             // User must switch to a different context first
             // We could auto-switch, but explicit is better than implicit
-            return Err(crate::error::AppError::ContextNotFound(
-                format!("Cannot delete active context '{}'. Switch to another context first.", name)
-            ));
+            return Err(crate::error::AppError::ContextNotFound(format!(
+                "Cannot delete active context '{}'. Switch to another context first.",
+                name
+            )));
         }
-        
+
         // Remove the context from the HashMap
         // remove() returns Some(context) if found, None otherwise
         // We already checked that it exists, so we can safely unwrap
         self.contexts.remove(name);
-        
+
         // Return success
         Ok(())
     }
@@ -784,7 +785,8 @@ impl ContextManager {
         // Get the active context from the HashMap
         // We use unwrap() because we maintain the invariant that active_context
         // always refers to an existing context
-        self.contexts.get(&self.active_context)
+        self.contexts
+            .get(&self.active_context)
             .expect("Active context must exist in contexts HashMap")
     }
 
@@ -823,7 +825,7 @@ impl ContextManager {
     /// use rust_todo::task::{Task, TimeHorizon, Priority};
     ///
     /// let mut manager = ContextManager::new();
-    /// 
+    ///
     /// // Get mutable reference and add a task
     /// let context = manager.active_context_mut();
     /// let task = Task::new("Test".to_string(), TimeHorizon::ShortTerm, Priority::High);
@@ -834,7 +836,8 @@ impl ContextManager {
     pub fn active_context_mut(&mut self) -> &mut Context {
         // Get a mutable reference to the active context
         // We use unwrap() for the same reason as active_context()
-        self.contexts.get_mut(&self.active_context)
+        self.contexts
+            .get_mut(&self.active_context)
             .expect("Active context must exist in contexts HashMap")
     }
 
@@ -892,9 +895,7 @@ impl ContextManager {
         // Get an iterator over the keys (context names)
         // Convert each &String to &str using as_str()
         // Collect the results into a Vec
-        self.contexts.keys()
-            .map(|s| s.as_str())
-            .collect()
+        self.contexts.keys().map(|s| s.as_str()).collect()
     }
 }
 
@@ -907,10 +908,10 @@ mod tests {
     fn test_context_new() {
         // Test creating a new context
         let context = Context::new("work".to_string());
-        
+
         // Verify the name is set correctly
         assert_eq!(context.name, "work");
-        
+
         // Verify the task list is empty
         assert_eq!(context.tasks.len(), 0);
         assert!(context.tasks.is_empty());
@@ -922,7 +923,7 @@ mod tests {
         let work = Context::new("work".to_string());
         let personal = Context::new("personal".to_string());
         let learning = Context::new("learning".to_string());
-        
+
         assert_eq!(work.name, "work");
         assert_eq!(personal.name, "personal");
         assert_eq!(learning.name, "learning");
@@ -932,9 +933,9 @@ mod tests {
     fn test_context_serialization() {
         // Test that Context can be serialized to JSON
         let context = Context::new("test".to_string());
-        
+
         let json = serde_json::to_string(&context).unwrap();
-        
+
         // Verify JSON contains expected fields
         assert!(json.contains("\"name\""));
         assert!(json.contains("\"tasks\""));
@@ -948,9 +949,9 @@ mod tests {
             "name": "test-context",
             "tasks": []
         }"#;
-        
+
         let context: Context = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(context.name, "test-context");
         assert_eq!(context.tasks.len(), 0);
     }
@@ -959,17 +960,17 @@ mod tests {
     fn test_context_with_tasks_serialization() {
         // Test serialization of a context with tasks
         let mut context = Context::new("work".to_string());
-        
+
         // Add a task to the context
         let task = Task::new(
             "Test task".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         );
         context.tasks.push(task);
-        
+
         let json = serde_json::to_string(&context).unwrap();
-        
+
         // Verify JSON contains task data
         assert!(json.contains("Test task"));
         assert!(json.contains("ShortTerm"));
@@ -992,9 +993,9 @@ mod tests {
                 }
             ]
         }"#;
-        
+
         let context: Context = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(context.name, "work");
         assert_eq!(context.tasks.len(), 1);
         assert_eq!(context.tasks[0].description, "Test task");
@@ -1006,17 +1007,13 @@ mod tests {
     fn test_context_clone() {
         // Test that Context can be cloned
         let mut context1 = Context::new("original".to_string());
-        
-        let task = Task::new(
-            "Task 1".to_string(),
-            TimeHorizon::ShortTerm,
-            Priority::Low
-        );
+
+        let task = Task::new("Task 1".to_string(), TimeHorizon::ShortTerm, Priority::Low);
         context1.tasks.push(task);
-        
+
         // Clone the context
         let context2 = context1.clone();
-        
+
         // Both contexts should have the same data
         assert_eq!(context1.name, context2.name);
         assert_eq!(context1.tasks.len(), context2.tasks.len());
@@ -1027,16 +1024,16 @@ mod tests {
     fn test_add_task() {
         // Test adding tasks to a context
         let mut context = Context::new("work".to_string());
-        
+
         let task1 = Task::new("Task 1".to_string(), TimeHorizon::ShortTerm, Priority::High);
         let task2 = Task::new("Task 2".to_string(), TimeHorizon::MidTerm, Priority::Low);
-        
+
         context.add_task(task1);
         assert_eq!(context.tasks.len(), 1);
-        
+
         context.add_task(task2);
         assert_eq!(context.tasks.len(), 2);
-        
+
         assert_eq!(context.tasks[0].description, "Task 1");
         assert_eq!(context.tasks[1].description, "Task 2");
     }
@@ -1045,16 +1042,20 @@ mod tests {
     fn test_find_task() {
         // Test finding a task by ID
         let mut context = Context::new("work".to_string());
-        
-        let task = Task::new("Test task".to_string(), TimeHorizon::ShortTerm, Priority::Medium);
+
+        let task = Task::new(
+            "Test task".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::Medium,
+        );
         let task_id = task.id.clone();
         context.add_task(task);
-        
+
         // Find the task
         let found = context.find_task(&task_id);
         assert!(found.is_some());
         assert_eq!(found.unwrap().description, "Test task");
-        
+
         // Try to find a non-existent task
         let not_found = context.find_task("non-existent-id");
         assert!(not_found.is_none());
@@ -1064,16 +1065,20 @@ mod tests {
     fn test_find_task_mut() {
         // Test finding and modifying a task
         let mut context = Context::new("work".to_string());
-        
-        let task = Task::new("Test task".to_string(), TimeHorizon::ShortTerm, Priority::Medium);
+
+        let task = Task::new(
+            "Test task".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::Medium,
+        );
         let task_id = task.id.clone();
         context.add_task(task);
-        
+
         // Find and modify the task
         if let Some(task) = context.find_task_mut(&task_id) {
             task.mark_complete();
         }
-        
+
         // Verify the task was modified
         let found = context.find_task(&task_id);
         assert!(found.is_some());
@@ -1084,22 +1089,22 @@ mod tests {
     fn test_remove_task() {
         // Test removing a task
         let mut context = Context::new("work".to_string());
-        
+
         let task1 = Task::new("Task 1".to_string(), TimeHorizon::ShortTerm, Priority::High);
         let task2 = Task::new("Task 2".to_string(), TimeHorizon::MidTerm, Priority::Low);
         let task1_id = task1.id.clone();
         let task2_id = task2.id.clone();
-        
+
         context.add_task(task1);
         context.add_task(task2);
         assert_eq!(context.tasks.len(), 2);
-        
+
         // Remove the first task
         let removed = context.remove_task(&task1_id);
         assert!(removed.is_ok());
         assert_eq!(removed.unwrap().description, "Task 1");
         assert_eq!(context.tasks.len(), 1);
-        
+
         // Verify the remaining task is task2
         assert_eq!(context.tasks[0].id, task2_id);
     }
@@ -1108,14 +1113,14 @@ mod tests {
     fn test_remove_task_not_found() {
         // Test removing a non-existent task
         let mut context = Context::new("work".to_string());
-        
+
         let task = Task::new("Task 1".to_string(), TimeHorizon::ShortTerm, Priority::High);
         context.add_task(task);
-        
+
         // Try to remove a non-existent task
         let result = context.remove_task("non-existent-id");
         assert!(result.is_err());
-        
+
         // Verify the error type
         match result {
             Err(crate::error::AppError::TaskNotFound(id)) => {
@@ -1123,7 +1128,7 @@ mod tests {
             }
             _ => panic!("Expected TaskNotFound error"),
         }
-        
+
         // Verify the original task is still there
         assert_eq!(context.tasks.len(), 1);
     }
@@ -1132,23 +1137,47 @@ mod tests {
     fn test_tasks_by_horizon() {
         // Test filtering tasks by time horizon
         let mut context = Context::new("work".to_string());
-        
-        context.add_task(Task::new("Short 1".to_string(), TimeHorizon::ShortTerm, Priority::High));
-        context.add_task(Task::new("Mid 1".to_string(), TimeHorizon::MidTerm, Priority::Medium));
-        context.add_task(Task::new("Short 2".to_string(), TimeHorizon::ShortTerm, Priority::Low));
-        context.add_task(Task::new("Long 1".to_string(), TimeHorizon::LongTerm, Priority::High));
-        context.add_task(Task::new("Mid 2".to_string(), TimeHorizon::MidTerm, Priority::Low));
-        
+
+        context.add_task(Task::new(
+            "Short 1".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::High,
+        ));
+        context.add_task(Task::new(
+            "Mid 1".to_string(),
+            TimeHorizon::MidTerm,
+            Priority::Medium,
+        ));
+        context.add_task(Task::new(
+            "Short 2".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::Low,
+        ));
+        context.add_task(Task::new(
+            "Long 1".to_string(),
+            TimeHorizon::LongTerm,
+            Priority::High,
+        ));
+        context.add_task(Task::new(
+            "Mid 2".to_string(),
+            TimeHorizon::MidTerm,
+            Priority::Low,
+        ));
+
         // Filter by ShortTerm
         let short_tasks = context.tasks_by_horizon(TimeHorizon::ShortTerm);
         assert_eq!(short_tasks.len(), 2);
-        assert!(short_tasks.iter().all(|t| t.time_horizon == TimeHorizon::ShortTerm));
-        
+        assert!(short_tasks
+            .iter()
+            .all(|t| t.time_horizon == TimeHorizon::ShortTerm));
+
         // Filter by MidTerm
         let mid_tasks = context.tasks_by_horizon(TimeHorizon::MidTerm);
         assert_eq!(mid_tasks.len(), 2);
-        assert!(mid_tasks.iter().all(|t| t.time_horizon == TimeHorizon::MidTerm));
-        
+        assert!(mid_tasks
+            .iter()
+            .all(|t| t.time_horizon == TimeHorizon::MidTerm));
+
         // Filter by LongTerm
         let long_tasks = context.tasks_by_horizon(TimeHorizon::LongTerm);
         assert_eq!(long_tasks.len(), 1);
@@ -1159,9 +1188,13 @@ mod tests {
     fn test_tasks_by_horizon_empty() {
         // Test filtering when no tasks match
         let mut context = Context::new("work".to_string());
-        
-        context.add_task(Task::new("Short 1".to_string(), TimeHorizon::ShortTerm, Priority::High));
-        
+
+        context.add_task(Task::new(
+            "Short 1".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::High,
+        ));
+
         // Filter by LongTerm (no matches)
         let long_tasks = context.tasks_by_horizon(TimeHorizon::LongTerm);
         assert_eq!(long_tasks.len(), 0);
@@ -1171,42 +1204,66 @@ mod tests {
     fn test_sorted_tasks() {
         // Test sorting tasks by time horizon and priority
         let mut context = Context::new("work".to_string());
-        
+
         // Add tasks in random order
-        context.add_task(Task::new("Long Low".to_string(), TimeHorizon::LongTerm, Priority::Low));
-        context.add_task(Task::new("Short Med".to_string(), TimeHorizon::ShortTerm, Priority::Medium));
-        context.add_task(Task::new("Mid High".to_string(), TimeHorizon::MidTerm, Priority::High));
-        context.add_task(Task::new("Short High".to_string(), TimeHorizon::ShortTerm, Priority::High));
-        context.add_task(Task::new("Short Low".to_string(), TimeHorizon::ShortTerm, Priority::Low));
-        context.add_task(Task::new("Long High".to_string(), TimeHorizon::LongTerm, Priority::High));
-        
+        context.add_task(Task::new(
+            "Long Low".to_string(),
+            TimeHorizon::LongTerm,
+            Priority::Low,
+        ));
+        context.add_task(Task::new(
+            "Short Med".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::Medium,
+        ));
+        context.add_task(Task::new(
+            "Mid High".to_string(),
+            TimeHorizon::MidTerm,
+            Priority::High,
+        ));
+        context.add_task(Task::new(
+            "Short High".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::High,
+        ));
+        context.add_task(Task::new(
+            "Short Low".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::Low,
+        ));
+        context.add_task(Task::new(
+            "Long High".to_string(),
+            TimeHorizon::LongTerm,
+            Priority::High,
+        ));
+
         let sorted = context.sorted_tasks();
-        
+
         // Verify the order: ShortTerm (High, Med, Low), MidTerm (High), LongTerm (High, Low)
         assert_eq!(sorted.len(), 6);
-        
+
         // ShortTerm tasks should come first
         assert_eq!(sorted[0].description, "Short High");
         assert_eq!(sorted[0].time_horizon, TimeHorizon::ShortTerm);
         assert_eq!(sorted[0].priority, Priority::High);
-        
+
         assert_eq!(sorted[1].description, "Short Med");
         assert_eq!(sorted[1].time_horizon, TimeHorizon::ShortTerm);
         assert_eq!(sorted[1].priority, Priority::Medium);
-        
+
         assert_eq!(sorted[2].description, "Short Low");
         assert_eq!(sorted[2].time_horizon, TimeHorizon::ShortTerm);
         assert_eq!(sorted[2].priority, Priority::Low);
-        
+
         // MidTerm tasks should come next
         assert_eq!(sorted[3].description, "Mid High");
         assert_eq!(sorted[3].time_horizon, TimeHorizon::MidTerm);
-        
+
         // LongTerm tasks should come last
         assert_eq!(sorted[4].description, "Long High");
         assert_eq!(sorted[4].time_horizon, TimeHorizon::LongTerm);
         assert_eq!(sorted[4].priority, Priority::High);
-        
+
         assert_eq!(sorted[5].description, "Long Low");
         assert_eq!(sorted[5].time_horizon, TimeHorizon::LongTerm);
         assert_eq!(sorted[5].priority, Priority::Low);
@@ -1216,7 +1273,7 @@ mod tests {
     fn test_sorted_tasks_empty() {
         // Test sorting an empty context
         let context = Context::new("work".to_string());
-        
+
         let sorted = context.sorted_tasks();
         assert_eq!(sorted.len(), 0);
     }
@@ -1225,9 +1282,13 @@ mod tests {
     fn test_sorted_tasks_single() {
         // Test sorting with a single task
         let mut context = Context::new("work".to_string());
-        
-        context.add_task(Task::new("Only task".to_string(), TimeHorizon::MidTerm, Priority::Medium));
-        
+
+        context.add_task(Task::new(
+            "Only task".to_string(),
+            TimeHorizon::MidTerm,
+            Priority::Medium,
+        ));
+
         let sorted = context.sorted_tasks();
         assert_eq!(sorted.len(), 1);
         assert_eq!(sorted[0].description, "Only task");
@@ -1239,14 +1300,14 @@ mod tests {
     fn test_context_manager_new() {
         // Test creating a new ContextManager
         let manager = ContextManager::new();
-        
+
         // Verify the default context exists
         assert_eq!(manager.contexts.len(), 1);
         assert!(manager.contexts.contains_key("default"));
-        
+
         // Verify the default context is active
         assert_eq!(manager.active_context, "default");
-        
+
         // Verify the default context has no tasks
         let default_context = manager.contexts.get("default").unwrap();
         assert_eq!(default_context.name, "default");
@@ -1257,9 +1318,9 @@ mod tests {
     fn test_context_manager_serialization() {
         // Test that ContextManager can be serialized to JSON
         let manager = ContextManager::new();
-        
+
         let json = serde_json::to_string(&manager).unwrap();
-        
+
         // Verify JSON contains expected fields
         assert!(json.contains("\"contexts\""));
         assert!(json.contains("\"active_context\""));
@@ -1278,9 +1339,9 @@ mod tests {
             },
             "active_context": "default"
         }"#;
-        
+
         let manager: ContextManager = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(manager.active_context, "default");
         assert_eq!(manager.contexts.len(), 1);
         assert!(manager.contexts.contains_key("default"));
@@ -1306,9 +1367,9 @@ mod tests {
             },
             "active_context": "work"
         }"#;
-        
+
         let manager: ContextManager = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(manager.active_context, "work");
         assert_eq!(manager.contexts.len(), 3);
         assert!(manager.contexts.contains_key("default"));
@@ -1320,17 +1381,17 @@ mod tests {
     fn test_context_manager_round_trip() {
         // Test serialization and deserialization round-trip
         let manager1 = ContextManager::new();
-        
+
         // Serialize to JSON
         let json = serde_json::to_string(&manager1).unwrap();
-        
+
         // Deserialize back
         let manager2: ContextManager = serde_json::from_str(&json).unwrap();
-        
+
         // Verify they match
         assert_eq!(manager1.active_context, manager2.active_context);
         assert_eq!(manager1.contexts.len(), manager2.contexts.len());
-        
+
         // Verify the default context exists in both
         assert!(manager2.contexts.contains_key("default"));
     }
@@ -1341,15 +1402,15 @@ mod tests {
     fn test_create_context() {
         // Test creating a new context
         let mut manager = ContextManager::new();
-        
+
         // Create a new context
         let result = manager.create_context("work".to_string());
         assert!(result.is_ok());
-        
+
         // Verify the context was created
         assert_eq!(manager.contexts.len(), 2); // default + work
         assert!(manager.contexts.contains_key("work"));
-        
+
         // Verify the context has the correct name and is empty
         let work_context = manager.contexts.get("work").unwrap();
         assert_eq!(work_context.name, "work");
@@ -1360,14 +1421,14 @@ mod tests {
     fn test_create_context_duplicate() {
         // Test creating a context with a duplicate name
         let mut manager = ContextManager::new();
-        
+
         // Create a context
         manager.create_context("work".to_string()).unwrap();
-        
+
         // Try to create a duplicate
         let result = manager.create_context("work".to_string());
         assert!(result.is_err());
-        
+
         // Verify the error type
         match result {
             Err(crate::error::AppError::ContextAlreadyExists(name)) => {
@@ -1375,7 +1436,7 @@ mod tests {
             }
             _ => panic!("Expected ContextAlreadyExists error"),
         }
-        
+
         // Verify only one "work" context exists
         assert_eq!(manager.contexts.len(), 2); // default + work
     }
@@ -1384,11 +1445,11 @@ mod tests {
     fn test_create_multiple_contexts() {
         // Test creating multiple contexts
         let mut manager = ContextManager::new();
-        
+
         manager.create_context("work".to_string()).unwrap();
         manager.create_context("personal".to_string()).unwrap();
         manager.create_context("learning".to_string()).unwrap();
-        
+
         assert_eq!(manager.contexts.len(), 4); // default + 3 new
         assert!(manager.contexts.contains_key("work"));
         assert!(manager.contexts.contains_key("personal"));
@@ -1400,15 +1461,15 @@ mod tests {
         // Test switching to a different context
         let mut manager = ContextManager::new();
         manager.create_context("work".to_string()).unwrap();
-        
+
         // Initially on default
         assert_eq!(manager.active_context, "default");
-        
+
         // Switch to work
         let result = manager.switch_context("work");
         assert!(result.is_ok());
         assert_eq!(manager.active_context, "work");
-        
+
         // Switch back to default
         let result = manager.switch_context("default");
         assert!(result.is_ok());
@@ -1419,10 +1480,10 @@ mod tests {
     fn test_switch_context_not_found() {
         // Test switching to a non-existent context
         let mut manager = ContextManager::new();
-        
+
         let result = manager.switch_context("nonexistent");
         assert!(result.is_err());
-        
+
         // Verify the error type
         match result {
             Err(crate::error::AppError::ContextNotFound(name)) => {
@@ -1430,7 +1491,7 @@ mod tests {
             }
             _ => panic!("Expected ContextNotFound error"),
         }
-        
+
         // Verify the active context didn't change
         assert_eq!(manager.active_context, "default");
     }
@@ -1441,11 +1502,11 @@ mod tests {
         let mut manager = ContextManager::new();
         manager.create_context("work".to_string()).unwrap();
         manager.create_context("personal".to_string()).unwrap();
-        
+
         // Delete the work context
         let result = manager.delete_context("work");
         assert!(result.is_ok());
-        
+
         // Verify the context was deleted
         assert_eq!(manager.contexts.len(), 2); // default + personal
         assert!(!manager.contexts.contains_key("work"));
@@ -1457,10 +1518,10 @@ mod tests {
     fn test_delete_context_not_found() {
         // Test deleting a non-existent context
         let mut manager = ContextManager::new();
-        
+
         let result = manager.delete_context("nonexistent");
         assert!(result.is_err());
-        
+
         // Verify the error type
         match result {
             Err(crate::error::AppError::ContextNotFound(_)) => {
@@ -1474,11 +1535,11 @@ mod tests {
     fn test_delete_last_context() {
         // Test that we can't delete the last context
         let mut manager = ContextManager::new();
-        
+
         // Try to delete the only context
         let result = manager.delete_context("default");
         assert!(result.is_err());
-        
+
         // Verify the error type
         match result {
             Err(crate::error::AppError::CannotDeleteLastContext) => {
@@ -1486,7 +1547,7 @@ mod tests {
             }
             _ => panic!("Expected CannotDeleteLastContext error"),
         }
-        
+
         // Verify the context still exists
         assert_eq!(manager.contexts.len(), 1);
         assert!(manager.contexts.contains_key("default"));
@@ -1497,14 +1558,14 @@ mod tests {
         // Test that we can't delete the active context
         let mut manager = ContextManager::new();
         manager.create_context("work".to_string()).unwrap();
-        
+
         // Switch to work
         manager.switch_context("work").unwrap();
-        
+
         // Try to delete the active context
         let result = manager.delete_context("work");
         assert!(result.is_err());
-        
+
         // Verify the context still exists
         assert_eq!(manager.contexts.len(), 2);
         assert!(manager.contexts.contains_key("work"));
@@ -1515,7 +1576,7 @@ mod tests {
     fn test_active_context() {
         // Test getting the active context
         let manager = ContextManager::new();
-        
+
         let context = manager.active_context();
         assert_eq!(context.name, "default");
         assert_eq!(context.tasks.len(), 0);
@@ -1526,14 +1587,18 @@ mod tests {
         // Test that active_context returns the correct context after switching
         let mut manager = ContextManager::new();
         manager.create_context("work".to_string()).unwrap();
-        
+
         // Add a task to work context
         let work_context = manager.contexts.get_mut("work").unwrap();
-        work_context.add_task(Task::new("Work task".to_string(), TimeHorizon::ShortTerm, Priority::High));
-        
+        work_context.add_task(Task::new(
+            "Work task".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::High,
+        ));
+
         // Switch to work
         manager.switch_context("work").unwrap();
-        
+
         // Get the active context
         let context = manager.active_context();
         assert_eq!(context.name, "work");
@@ -1545,11 +1610,15 @@ mod tests {
     fn test_active_context_mut() {
         // Test getting a mutable reference to the active context
         let mut manager = ContextManager::new();
-        
+
         // Add a task through the mutable reference
         let context = manager.active_context_mut();
-        context.add_task(Task::new("Test task".to_string(), TimeHorizon::ShortTerm, Priority::Medium));
-        
+        context.add_task(Task::new(
+            "Test task".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::Medium,
+        ));
+
         // Verify the task was added
         assert_eq!(manager.active_context().tasks.len(), 1);
         assert_eq!(manager.active_context().tasks[0].description, "Test task");
@@ -1559,18 +1628,22 @@ mod tests {
     fn test_active_context_mut_modify_task() {
         // Test modifying a task through active_context_mut
         let mut manager = ContextManager::new();
-        
+
         // Add a task
-        let task = Task::new("Test task".to_string(), TimeHorizon::ShortTerm, Priority::Medium);
+        let task = Task::new(
+            "Test task".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::Medium,
+        );
         let task_id = task.id.clone();
         manager.active_context_mut().add_task(task);
-        
+
         // Modify the task
         let context = manager.active_context_mut();
         if let Some(task) = context.find_task_mut(&task_id) {
             task.mark_complete();
         }
-        
+
         // Verify the task was modified
         let found = manager.active_context().find_task(&task_id);
         assert!(found.is_some());
@@ -1581,17 +1654,17 @@ mod tests {
     fn test_list_contexts() {
         // Test listing all context names
         let mut manager = ContextManager::new();
-        
+
         // Initially only default
         let names = manager.list_contexts();
         assert_eq!(names.len(), 1);
         assert!(names.contains(&"default"));
-        
+
         // Add more contexts
         manager.create_context("work".to_string()).unwrap();
         manager.create_context("personal".to_string()).unwrap();
         manager.create_context("learning".to_string()).unwrap();
-        
+
         // List all contexts
         let names = manager.list_contexts();
         assert_eq!(names.len(), 4);
@@ -1607,10 +1680,10 @@ mod tests {
         let mut manager = ContextManager::new();
         manager.create_context("work".to_string()).unwrap();
         manager.create_context("personal".to_string()).unwrap();
-        
+
         // Delete one context
         manager.delete_context("work").unwrap();
-        
+
         // List contexts
         let names = manager.list_contexts();
         assert_eq!(names.len(), 2);
@@ -1623,34 +1696,41 @@ mod tests {
     fn test_context_workflow() {
         // Test a complete workflow: create, switch, add tasks, switch back
         let mut manager = ContextManager::new();
-        
+
         // Create work context
         manager.create_context("work".to_string()).unwrap();
-        
+
         // Add task to default context
-        manager.active_context_mut().add_task(
-            Task::new("Default task".to_string(), TimeHorizon::ShortTerm, Priority::High)
-        );
-        
+        manager.active_context_mut().add_task(Task::new(
+            "Default task".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::High,
+        ));
+
         // Switch to work context
         manager.switch_context("work").unwrap();
-        
+
         // Add task to work context
-        manager.active_context_mut().add_task(
-            Task::new("Work task".to_string(), TimeHorizon::MidTerm, Priority::Medium)
-        );
-        
+        manager.active_context_mut().add_task(Task::new(
+            "Work task".to_string(),
+            TimeHorizon::MidTerm,
+            Priority::Medium,
+        ));
+
         // Verify work context has 1 task
         assert_eq!(manager.active_context().tasks.len(), 1);
         assert_eq!(manager.active_context().tasks[0].description, "Work task");
-        
+
         // Switch back to default
         manager.switch_context("default").unwrap();
-        
+
         // Verify default context still has its task
         assert_eq!(manager.active_context().tasks.len(), 1);
-        assert_eq!(manager.active_context().tasks[0].description, "Default task");
-        
+        assert_eq!(
+            manager.active_context().tasks[0].description,
+            "Default task"
+        );
+
         // Verify work context still has its task
         let work_context = manager.contexts.get("work").unwrap();
         assert_eq!(work_context.tasks.len(), 1);

@@ -22,9 +22,9 @@ pub mod task;
 
 // Re-export commonly used types for convenience
 // This allows users to write `use rust_todo::Task` instead of `use rust_todo::task::Task`
+pub use context::Context;
 pub use error::{AppError, Result};
 pub use task::{Priority, Task, TimeHorizon};
-pub use context::Context;
 // TODO: Uncomment when ContextManager is implemented
 // pub use context::ContextManager;
 // TODO: Uncomment when Store is implemented

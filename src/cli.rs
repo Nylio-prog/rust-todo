@@ -124,7 +124,7 @@ pub enum Commands {
         ///
         /// The text describing what needs to be done. This is a required positional argument.
         description: String,
-        
+
         /// Time horizon: short, mid, or long
         ///
         /// Specifies when the task should be completed:
@@ -135,7 +135,7 @@ pub enum Commands {
         /// Default: short
         #[arg(short = 't', long = "horizon", default_value = "short")]
         horizon: String,
-        
+
         /// Priority: low, medium, or high
         ///
         /// Specifies how important the task is. Higher priority tasks should be
@@ -145,7 +145,7 @@ pub enum Commands {
         #[arg(short = 'p', long = "priority", default_value = "medium")]
         priority: String,
     },
-    
+
     /// List tasks in the active context
     ///
     /// Displays tasks grouped by time horizon and sorted by priority within each horizon.
@@ -172,7 +172,7 @@ pub enum Commands {
         /// By default, completed tasks are hidden. Use this flag to show them.
         #[arg(short = 'a', long = "all")]
         all: bool,
-        
+
         /// Filter by time horizon: short, mid, or long
         ///
         /// If specified, only shows tasks from the specified time horizon.
@@ -180,7 +180,7 @@ pub enum Commands {
         #[arg(short = 't', long = "horizon")]
         horizon: Option<String>,
     },
-    
+
     /// Mark a task as complete
     ///
     /// Marks the specified task as completed. The task ID can be a partial match
@@ -202,7 +202,7 @@ pub enum Commands {
         /// or just the first few characters (as shown in the list view).
         id: String,
     },
-    
+
     /// Edit a task's properties
     ///
     /// Modifies one or more properties of an existing task. You can change the
@@ -225,26 +225,26 @@ pub enum Commands {
         ///
         /// The unique identifier of the task to modify. Can be a partial ID.
         id: String,
-        
+
         /// New description
         ///
         /// If specified, updates the task's description to this value.
         #[arg(short = 'd', long = "description")]
         description: Option<String>,
-        
+
         /// New time horizon: short, mid, or long
         ///
         /// If specified, moves the task to this time horizon.
         #[arg(short = 't', long = "horizon")]
         horizon: Option<String>,
-        
+
         /// New priority: low, medium, or high
         ///
         /// If specified, changes the task's priority to this value.
         #[arg(short = 'p', long = "priority")]
         priority: Option<String>,
     },
-    
+
     /// Delete a task
     ///
     /// Permanently removes the specified task from the active context.
@@ -265,7 +265,7 @@ pub enum Commands {
         /// The unique identifier of the task to remove. Can be a partial ID.
         id: String,
     },
-    
+
     /// Manage project contexts
     ///
     /// Contexts allow you to organize tasks by project or area of responsibility.
@@ -293,7 +293,7 @@ pub enum Commands {
         #[command(subcommand)]
         action: ContextAction,
     },
-    
+
     /// Export tasks to a file
     ///
     /// Creates a JSON file containing all contexts and their tasks. This is useful
@@ -315,7 +315,7 @@ pub enum Commands {
         /// all contexts and tasks in JSON format.
         path: PathBuf,
     },
-    
+
     /// Import tasks from a file
     ///
     /// Loads tasks from a JSON file. By default, replaces the current data.
@@ -336,7 +336,7 @@ pub enum Commands {
         /// The path to the JSON file to import. The file must be in the correct format
         /// (as created by the export command).
         path: PathBuf,
-        
+
         /// Merge with existing data instead of replacing
         ///
         /// If specified, imported contexts and tasks are added to the existing data.
@@ -394,7 +394,7 @@ pub enum ContextAction {
         /// an error will be returned.
         name: String,
     },
-    
+
     /// Switch to a different context
     ///
     /// Changes the active context to the specified one. All subsequent task operations
@@ -412,7 +412,7 @@ pub enum ContextAction {
         /// The context must exist. Use `todo context list` to see available contexts.
         name: String,
     },
-    
+
     /// List all contexts
     ///
     /// Displays all available contexts with an indicator showing which one is active.
@@ -423,7 +423,7 @@ pub enum ContextAction {
     /// todo context list
     /// ```
     List,
-    
+
     /// Delete a context
     ///
     /// Permanently removes the specified context and all its tasks. This action cannot

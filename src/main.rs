@@ -164,10 +164,10 @@ fn get_store() -> Result<Store> {
     if let Some(proj_dirs) = directories::ProjectDirs::from("", "", "rust-todo") {
         // Get the data directory path
         let data_dir = proj_dirs.data_dir();
-        
+
         // Create the full path to the data file
         let file_path = data_dir.join("data.json");
-        
+
         // Return a Store instance with this path
         Ok(Store::new(file_path))
     } else {
@@ -214,24 +214,24 @@ fn handle_add(
     // FromStr::from_str() returns Result<TimeHorizon, AppError>
     // The ? operator propagates the error if parsing fails
     let time_horizon = TimeHorizon::from_str(&horizon)?;
-    
+
     // Parse the priority string to a Priority enum
     // Same error handling as above
     let priority_level = Priority::from_str(&priority)?;
-    
+
     // Create a new task with the parsed values
     // Task::new() generates a UUID and timestamp automatically
     let task = Task::new(description.clone(), time_horizon, priority_level);
-    
+
     // Get the task ID for display (first 6 characters)
     // Clone the ID to avoid borrowing issues
     let short_id = task.id[..6].to_string();
-    
+
     // Add the task to the active context
     // active_context_mut() returns a mutable reference to the active context
     // add_task() takes ownership of the task and adds it to the context's Vec
     manager.active_context_mut().add_task(task);
-    
+
     // Display success message with colored output
     // The colored crate provides methods like .green() and .bold()
     println!(
@@ -240,7 +240,7 @@ fn handle_add(
         short_id.cyan()
     );
     println!("  {}", description.dimmed());
-    
+
     Ok(())
 }
 
@@ -278,23 +278,23 @@ fn handle_list(
     // Get the active context
     // active_context() returns an immutable reference
     let context = manager.active_context();
-    
+
     // Get the tasks to display based on the horizon filter
     let tasks: Vec<&Task> = if let Some(horizon_str) = horizon_filter {
         // Parse the horizon filter string
         let horizon = TimeHorizon::from_str(&horizon_str)?;
-        
+
         // Filter tasks by the specified horizon
         context.tasks_by_horizon(horizon)
     } else {
         // No filter - get all tasks sorted by horizon and priority
         context.sorted_tasks()
     };
-    
+
     // Display the tasks using the display module
     // display_tasks() handles formatting, grouping, and coloring
     display_tasks(&tasks, show_all);
-    
+
     // Display context information
     println!();
     println!(
@@ -302,7 +302,7 @@ fn handle_list(
         "ℹ".cyan(),
         manager.active_context.cyan().bold()
     );
-    
+
     Ok(())
 }
 
@@ -331,20 +331,20 @@ fn handle_list(
 fn handle_complete(manager: &mut ContextManager, id: String) -> Result<()> {
     // Get the active context
     let context = manager.active_context_mut();
-    
+
     // Find the task by ID (supports partial matching)
     let task = find_task_by_partial_id(context, &id)?;
-    
+
     // Mark the task as complete
     task.mark_complete();
-    
+
     // Display success message
     println!(
         "{} Task completed: {}",
         "✓".green().bold(),
         task.description.dimmed()
     );
-    
+
     Ok(())
 }
 
@@ -387,30 +387,30 @@ fn handle_edit(
     } else {
         None
     };
-    
+
     // Parse optional priority
     let priority_level = if let Some(p) = priority {
         Some(Priority::from_str(&p)?)
     } else {
         None
     };
-    
+
     // Get the active context
     let context = manager.active_context_mut();
-    
+
     // Find the task by ID
     let task = find_task_by_partial_id(context, &id)?;
-    
+
     // Update the task with the provided values
     task.update(description.clone(), time_horizon, priority_level);
-    
+
     // Display success message
     println!(
         "{} Task updated: {}",
         "✓".green().bold(),
         task.description.dimmed()
     );
-    
+
     Ok(())
 }
 
@@ -438,20 +438,20 @@ fn handle_edit(
 fn handle_delete(manager: &mut ContextManager, id: String) -> Result<()> {
     // Get the active context
     let context = manager.active_context_mut();
-    
+
     // Find the full task ID by partial match
     let full_id = find_task_id_by_partial(context, &id)?;
-    
+
     // Remove the task and get it back (for displaying confirmation)
     let removed_task = context.remove_task(&full_id)?;
-    
+
     // Display success message
     println!(
         "{} Task deleted: {}",
         "✓".green().bold(),
         removed_task.description.dimmed()
     );
-    
+
     Ok(())
 }
 
@@ -484,7 +484,7 @@ fn handle_context(manager: &mut ContextManager, action: ContextAction) -> Result
         ContextAction::New { name } => {
             // Create a new context
             manager.create_context(name.clone())?;
-            
+
             println!(
                 "{} Context created: {}",
                 "✓".green().bold(),
@@ -494,10 +494,10 @@ fn handle_context(manager: &mut ContextManager, action: ContextAction) -> Result
         ContextAction::Switch { name } => {
             // Switch to a different context
             manager.switch_context(&name)?;
-            
+
             // Get task count for the new context
             let task_count = manager.active_context().tasks.len();
-            
+
             println!(
                 "{} Switched to context: {} ({} tasks)",
                 "✓".green().bold(),
@@ -513,15 +513,11 @@ fn handle_context(manager: &mut ContextManager, action: ContextAction) -> Result
         ContextAction::Delete { name } => {
             // Delete a context
             manager.delete_context(&name)?;
-            
-            println!(
-                "{} Context deleted: {}",
-                "✓".green().bold(),
-                name.dimmed()
-            );
+
+            println!("{} Context deleted: {}", "✓".green().bold(), name.dimmed());
         }
     }
-    
+
     Ok(())
 }
 
@@ -550,14 +546,14 @@ fn handle_context(manager: &mut ContextManager, action: ContextAction) -> Result
 fn handle_export(store: &Store, manager: &ContextManager, path: PathBuf) -> Result<()> {
     // Export the data to the specified file
     store.export(manager, &path)?;
-    
+
     // Display success message with the file path
     println!(
         "{} Data exported to: {}",
         "✓".green().bold(),
         path.display().to_string().cyan()
     );
-    
+
     Ok(())
 }
 
@@ -596,36 +592,37 @@ fn handle_import(
     // Import the data from the specified file
     // This validates the JSON structure and returns a new ContextManager
     let imported_manager = store.import(&path)?;
-    
+
     if merge {
         // Merge the imported data with existing data
         let mut added_contexts = 0;
         let mut added_tasks = 0;
-        
+
+        #[allow(clippy::map_entry)]
         for (context_name, context) in imported_manager.contexts {
             if manager.contexts.contains_key(&context_name) {
                 // Context already exists - rename the imported one
                 let mut new_name = format!("{}-imported", context_name);
                 let mut counter = 1;
-                
+
                 // Find a unique name by adding a counter
                 while manager.contexts.contains_key(&new_name) {
                     counter += 1;
                     new_name = format!("{}-imported-{}", context_name, counter);
                 }
-                
+
                 // Create the context with the new name
                 manager.create_context(new_name.clone())?;
-                
+
                 // Add all tasks from the imported context
                 let new_context = manager.contexts.get_mut(&new_name).unwrap();
                 for task in context.tasks {
                     added_tasks += 1;
                     new_context.add_task(task);
                 }
-                
+
                 added_contexts += 1;
-                
+
                 println!(
                     "{} Context '{}' renamed to '{}' (name conflict)",
                     "ℹ".yellow(),
@@ -639,7 +636,7 @@ fn handle_import(
                 added_contexts += 1;
             }
         }
-        
+
         println!(
             "{} Imported {} contexts and {} tasks",
             "✓".green().bold(),
@@ -654,9 +651,9 @@ fn handle_import(
             .values()
             .map(|c| c.tasks.len())
             .sum();
-        
+
         *manager = imported_manager;
-        
+
         println!(
             "{} Imported {} contexts and {} tasks (replaced existing data)",
             "✓".green().bold(),
@@ -664,7 +661,7 @@ fn handle_import(
             task_count
         );
     }
-    
+
     Ok(())
 }
 
@@ -692,7 +689,7 @@ fn find_task_by_partial_id<'a>(
 ) -> Result<&'a mut Task> {
     // First, find the full ID by matching
     let full_id = find_task_id_by_partial(context, partial_id)?;
-    
+
     // Now find and return the mutable reference
     context
         .find_task_mut(&full_id)
@@ -723,7 +720,7 @@ fn find_task_id_by_partial(
         .filter(|task| task.id.starts_with(partial_id))
         .map(|task| task.id.clone())
         .collect();
-    
+
     // Check the number of matches
     match matches.len() {
         0 => {

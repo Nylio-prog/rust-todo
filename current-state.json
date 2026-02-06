@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "contexts": {
+    "personal": {
+      "name": "personal",
+      "tasks": [
+        {
+          "id": "8bf36123-a0f3-4eb8-83d9-992a50752111",
+          "description": "Exercise daily",
+          "time_horizon": "ShortTerm",
+          "priority": "Medium",
+          "completed": false,
+          "created_at": "2026-02-06T08:16:46.543775100+00:00"
+        }
+      ]
+    },
+    "work": {
+      "name": "work",
+      "tasks": [
+        {
+          "id": "6ededc86-0bc1-49c7-881a-a09a07ed8d2a",
+          "description": "Implement REST API",
+          "time_horizon": "ShortTerm",
+          "priority": "High",
+          "completed": false,
+          "created_at": "2026-02-06T08:14:12.882090500+00:00"
+        }
+      ]
+    },
+    "default": {
+      "name": "default",
+      "tasks": [
+        {
+          "id": "59ead925-bc97-4792-8c25-20d10e4f5c28",
+          "description": "Write comprehensive tests",
+          "time_horizon": "ShortTerm",
+          "priority": "High",
+          "completed": true,
+          "created_at": "2026-02-06T08:11:02.123944500+00:00"
+        },
+        {
+          "id": "b9205d57-8d9c-40fd-b7a1-afc57bea7626",
+          "description": "Write property-based tests for all modules",
+          "time_horizon": "MidTerm",
+          "priority": "High",
+          "completed": false,
+          "created_at": "2026-02-06T08:11:37.664985900+00:00"
+        }
+      ]
+    }
+  },
+  "active_context": "personal"
+}

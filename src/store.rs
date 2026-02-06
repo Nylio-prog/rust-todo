@@ -5,9 +5,9 @@
 // and loading it back. It uses JSON as the storage format for human-readability
 // and easy import/export capabilities.
 
+use crate::context::Context;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::context::Context;
 
 /// Represents the on-disk data format
 ///
@@ -78,13 +78,15 @@ use crate::context::Context;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StorageData {
     /// Schema version for handling future migrations
-    /// 
+    ///
     /// This field is always set to "1.0.0" for the current implementation.
     /// When loading data, we can check this version and apply migration
     /// logic if needed.
     ///
     /// Example migration logic (future):
     /// ```no_run
+    /// # use rust_todo::store::StorageData;
+    /// # let data = StorageData::new(std::collections::HashMap::new(), "default".to_string());
     /// match data.version.as_str() {
     ///     "1.0.0" => { /* no migration needed */ }
     ///     "0.9.0" => { /* migrate from old format */ }
@@ -92,7 +94,7 @@ pub struct StorageData {
     /// }
     /// ```
     pub version: String,
-    
+
     /// All contexts, indexed by name
     ///
     /// This HashMap contains all the user's contexts and their tasks.
@@ -112,7 +114,7 @@ pub struct StorageData {
     /// }
     /// ```
     pub contexts: HashMap<String, Context>,
-    
+
     /// The name of the currently active context
     ///
     /// This field stores which context is currently active. All task
@@ -416,12 +418,10 @@ impl Store {
         // Validate that the active context exists in the contexts HashMap
         // This ensures data integrity and prevents panics later
         if !data.contexts.contains_key(&data.active_context) {
-            return Err(crate::error::AppError::InvalidDataFormat(
-                format!(
-                    "Active context '{}' does not exist in contexts",
-                    data.active_context
-                ),
-            ));
+            return Err(crate::error::AppError::InvalidDataFormat(format!(
+                "Active context '{}' does not exist in contexts",
+                data.active_context
+            )));
         }
 
         // Convert StorageData to ContextManager
@@ -551,10 +551,7 @@ impl Store {
 
         // Convert ContextManager to StorageData
         // This adds the version field and prepares for serialization
-        let data = StorageData::new(
-            manager.contexts.clone(),
-            manager.active_context.clone(),
-        );
+        let data = StorageData::new(manager.contexts.clone(), manager.active_context.clone());
 
         // Serialize to JSON with pretty printing
         // to_string_pretty() formats the JSON with indentation and newlines
@@ -640,7 +637,11 @@ impl Store {
     /// This method satisfies:
     /// - Requirement 4.5: Export tasks to JSON file
     /// - Requirement 6.1: Create JSON file with all contexts and tasks
-    pub fn export(&self, manager: &crate::context::ContextManager, export_path: &std::path::Path) -> crate::error::Result<()> {
+    pub fn export(
+        &self,
+        manager: &crate::context::ContextManager,
+        export_path: &std::path::Path,
+    ) -> crate::error::Result<()> {
         // Create the parent directory if it doesn't exist
         // This is the same logic as in save()
         if let Some(parent) = export_path.parent() {
@@ -649,10 +650,7 @@ impl Store {
 
         // Convert ContextManager to StorageData
         // This adds the version field and prepares for serialization
-        let data = StorageData::new(
-            manager.contexts.clone(),
-            manager.active_context.clone(),
-        );
+        let data = StorageData::new(manager.contexts.clone(), manager.active_context.clone());
 
         // Serialize to JSON with pretty printing
         // Pretty printing makes the export file human-readable
@@ -738,7 +736,10 @@ impl Store {
     /// - Requirement 6.2: Validate JSON structure before importing
     /// - Requirement 6.3: Deserialize to ContextManager
     /// - Requirement 6.5: Return error if invalid without modifying state
-    pub fn import(&self, import_path: &std::path::Path) -> crate::error::Result<crate::context::ContextManager> {
+    pub fn import(
+        &self,
+        import_path: &std::path::Path,
+    ) -> crate::error::Result<crate::context::ContextManager> {
         // Read the file contents as a String
         // If the file doesn't exist or can't be read, return an error
         // The ? operator converts io::Error to AppError::IoError
@@ -752,12 +753,10 @@ impl Store {
         // Validate that the active context exists in the contexts HashMap
         // This ensures data integrity and prevents invalid state
         if !data.contexts.contains_key(&data.active_context) {
-            return Err(crate::error::AppError::InvalidDataFormat(
-                format!(
-                    "Active context '{}' does not exist in contexts",
-                    data.active_context
-                ),
-            ));
+            return Err(crate::error::AppError::InvalidDataFormat(format!(
+                "Active context '{}' does not exist in contexts",
+                data.active_context
+            )));
         }
 
         // Convert StorageData to ContextManager
@@ -777,23 +776,23 @@ impl Store {
 mod tests {
     use super::*;
     use crate::context::Context;
-    use crate::task::{Task, TimeHorizon, Priority};
+    use crate::task::{Priority, Task, TimeHorizon};
 
     #[test]
     fn test_storage_data_new() {
         // Test creating a new StorageData
         let mut contexts = HashMap::new();
         contexts.insert("default".to_string(), Context::new("default".to_string()));
-        
+
         let data = StorageData::new(contexts, "default".to_string());
-        
+
         // Verify version is set correctly
         assert_eq!(data.version, "1.0.0");
-        
+
         // Verify contexts are stored
         assert_eq!(data.contexts.len(), 1);
         assert!(data.contexts.contains_key("default"));
-        
+
         // Verify active context is set
         assert_eq!(data.active_context, "default");
     }
@@ -803,11 +802,11 @@ mod tests {
         // Test that StorageData can be serialized to JSON
         let mut contexts = HashMap::new();
         contexts.insert("default".to_string(), Context::new("default".to_string()));
-        
+
         let data = StorageData::new(contexts, "default".to_string());
-        
+
         let json = serde_json::to_string(&data).unwrap();
-        
+
         // Verify JSON contains expected fields
         assert!(json.contains("\"version\""));
         assert!(json.contains("\"contexts\""));
@@ -829,9 +828,9 @@ mod tests {
                 }
             }
         }"#;
-        
+
         let data: StorageData = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(data.version, "1.0.0");
         assert_eq!(data.active_context, "default");
         assert_eq!(data.contexts.len(), 1);
@@ -845,9 +844,9 @@ mod tests {
         contexts.insert("default".to_string(), Context::new("default".to_string()));
         contexts.insert("work".to_string(), Context::new("work".to_string()));
         contexts.insert("personal".to_string(), Context::new("personal".to_string()));
-        
+
         let data = StorageData::new(contexts, "work".to_string());
-        
+
         assert_eq!(data.version, "1.0.0");
         assert_eq!(data.active_context, "work");
         assert_eq!(data.contexts.len(), 3);
@@ -860,23 +859,23 @@ mod tests {
     fn test_storage_data_with_tasks() {
         // Test StorageData with contexts containing tasks
         let mut contexts = HashMap::new();
-        
+
         let mut default_context = Context::new("default".to_string());
         default_context.add_task(Task::new(
             "Task 1".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         ));
         default_context.add_task(Task::new(
             "Task 2".to_string(),
             TimeHorizon::MidTerm,
-            Priority::Medium
+            Priority::Medium,
         ));
-        
+
         contexts.insert("default".to_string(), default_context);
-        
+
         let data = StorageData::new(contexts, "default".to_string());
-        
+
         // Verify tasks are included
         let default_ctx = data.contexts.get("default").unwrap();
         assert_eq!(default_ctx.tasks.len(), 2);
@@ -888,30 +887,30 @@ mod tests {
     fn test_storage_data_round_trip() {
         // Test serialization and deserialization round-trip
         let mut contexts = HashMap::new();
-        
+
         let mut work_context = Context::new("work".to_string());
         work_context.add_task(Task::new(
             "Work task".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         ));
-        
+
         contexts.insert("default".to_string(), Context::new("default".to_string()));
         contexts.insert("work".to_string(), work_context);
-        
+
         let data1 = StorageData::new(contexts, "work".to_string());
-        
+
         // Serialize to JSON
         let json = serde_json::to_string(&data1).unwrap();
-        
+
         // Deserialize back
         let data2: StorageData = serde_json::from_str(&json).unwrap();
-        
+
         // Verify they match
         assert_eq!(data1.version, data2.version);
         assert_eq!(data1.active_context, data2.active_context);
         assert_eq!(data1.contexts.len(), data2.contexts.len());
-        
+
         // Verify the work context and its task
         let work_ctx = data2.contexts.get("work").unwrap();
         assert_eq!(work_ctx.name, "work");
@@ -924,15 +923,15 @@ mod tests {
         // Test that StorageData can be serialized to pretty JSON
         let mut contexts = HashMap::new();
         contexts.insert("default".to_string(), Context::new("default".to_string()));
-        
+
         let data = StorageData::new(contexts, "default".to_string());
-        
+
         let json = serde_json::to_string_pretty(&data).unwrap();
-        
+
         // Verify JSON is formatted with newlines and indentation
         assert!(json.contains('\n'));
         assert!(json.contains("  ")); // Indentation
-        
+
         // Verify it can be deserialized back
         let data2: StorageData = serde_json::from_str(&json).unwrap();
         assert_eq!(data.version, data2.version);
@@ -943,11 +942,11 @@ mod tests {
         // Test that version field is always "1.0.0"
         let mut contexts = HashMap::new();
         contexts.insert("test".to_string(), Context::new("test".to_string()));
-        
+
         let data = StorageData::new(contexts, "test".to_string());
-        
+
         assert_eq!(data.version, "1.0.0");
-        
+
         // Verify version is included in JSON
         let json = serde_json::to_string(&data).unwrap();
         assert!(json.contains("\"version\":\"1.0.0\"") || json.contains("\"version\": \"1.0.0\""));
@@ -960,7 +959,7 @@ mod tests {
         // Test creating a new Store
         let path = std::path::PathBuf::from("test-data.json");
         let _store = super::Store::new(path.clone());
-        
+
         // We can't directly access file_path since it's private,
         // but we can verify the Store was created successfully
         // by using it in load/save operations
@@ -971,16 +970,16 @@ mod tests {
     fn test_store_load_missing_file() {
         // Test loading when the file doesn't exist
         use tempfile::TempDir;
-        
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("nonexistent.json");
-        
+
         let store = super::Store::new(file_path);
-        
+
         // Load should return a default ContextManager
         let manager = store.load().unwrap();
-        
+
         // Verify it's a default ContextManager
         assert_eq!(manager.active_context, "default");
         assert_eq!(manager.contexts.len(), 1);
@@ -990,43 +989,43 @@ mod tests {
     #[test]
     fn test_store_save_and_load() {
         // Test saving and loading a ContextManager
-        use tempfile::TempDir;
         use crate::context::ContextManager;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("data.json");
-        
+
         let store = super::Store::new(file_path.clone());
-        
+
         // Create a ContextManager with some data
         let mut manager = ContextManager::new();
         manager.create_context("work".to_string()).unwrap();
         manager.switch_context("work").unwrap();
-        
+
         // Add a task to the work context
         let task = Task::new(
             "Test task".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         );
         manager.active_context_mut().add_task(task);
-        
+
         // Save the manager
         store.save(&manager).unwrap();
-        
+
         // Verify the file was created
         assert!(file_path.exists());
-        
+
         // Load the manager back
         let loaded_manager = store.load().unwrap();
-        
+
         // Verify the data matches
         assert_eq!(loaded_manager.active_context, "work");
         assert_eq!(loaded_manager.contexts.len(), 2); // default + work
         assert!(loaded_manager.contexts.contains_key("default"));
         assert!(loaded_manager.contexts.contains_key("work"));
-        
+
         // Verify the task was loaded
         let work_context = loaded_manager.contexts.get("work").unwrap();
         assert_eq!(work_context.tasks.len(), 1);
@@ -1038,22 +1037,26 @@ mod tests {
     #[test]
     fn test_store_save_creates_directory() {
         // Test that save creates parent directories if needed
-        use tempfile::TempDir;
         use crate::context::ContextManager;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("subdir").join("nested").join("data.json");
-        
+        let file_path = temp_dir
+            .path()
+            .join("subdir")
+            .join("nested")
+            .join("data.json");
+
         // Verify the nested directories don't exist yet
         assert!(!file_path.parent().unwrap().exists());
-        
+
         let store = super::Store::new(file_path.clone());
         let manager = ContextManager::new();
-        
+
         // Save should create the directories
         store.save(&manager).unwrap();
-        
+
         // Verify the directories were created
         assert!(file_path.parent().unwrap().exists());
         assert!(file_path.exists());
@@ -1062,23 +1065,23 @@ mod tests {
     #[test]
     fn test_store_save_overwrites_existing_file() {
         // Test that save overwrites an existing file
-        use tempfile::TempDir;
         use crate::context::ContextManager;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("data.json");
-        
+
         let store = super::Store::new(file_path.clone());
-        
+
         // Save initial data
         let mut manager1 = ContextManager::new();
         store.save(&manager1).unwrap();
-        
+
         // Modify and save again
         manager1.create_context("work".to_string()).unwrap();
         store.save(&manager1).unwrap();
-        
+
         // Load and verify the new data
         let loaded_manager = store.load().unwrap();
         assert_eq!(loaded_manager.contexts.len(), 2); // default + work
@@ -1087,22 +1090,22 @@ mod tests {
     #[test]
     fn test_store_load_corrupted_json() {
         // Test loading a file with invalid JSON
-        use tempfile::TempDir;
         use std::fs;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("corrupted.json");
-        
+
         // Write invalid JSON to the file
         fs::write(&file_path, "{ invalid json }").unwrap();
-        
+
         let store = super::Store::new(file_path);
-        
+
         // Load should return an error
         let result = store.load();
         assert!(result.is_err());
-        
+
         // Verify it's a JSON error
         match result {
             Err(crate::error::AppError::JsonError(_)) => {
@@ -1115,18 +1118,18 @@ mod tests {
     #[test]
     fn test_store_load_invalid_structure() {
         // Test loading a file with valid JSON but invalid structure
-        use tempfile::TempDir;
         use std::fs;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("invalid.json");
-        
+
         // Write JSON with missing required fields
         fs::write(&file_path, r#"{"version": "1.0.0"}"#).unwrap();
-        
+
         let store = super::Store::new(file_path);
-        
+
         // Load should return an error
         let result = store.load();
         assert!(result.is_err());
@@ -1135,13 +1138,13 @@ mod tests {
     #[test]
     fn test_store_load_invalid_active_context() {
         // Test loading a file where active_context doesn't exist in contexts
-        use tempfile::TempDir;
         use std::fs;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("invalid-active.json");
-        
+
         // Write JSON with invalid active_context
         let json = r#"{
             "version": "1.0.0",
@@ -1154,13 +1157,13 @@ mod tests {
             }
         }"#;
         fs::write(&file_path, json).unwrap();
-        
+
         let store = super::Store::new(file_path);
-        
+
         // Load should return an error
         let result = store.load();
         assert!(result.is_err());
-        
+
         // Verify it's an InvalidDataFormat error
         match result {
             Err(crate::error::AppError::InvalidDataFormat(msg)) => {
@@ -1173,27 +1176,27 @@ mod tests {
     #[test]
     fn test_store_save_pretty_json() {
         // Test that save creates pretty-printed JSON
-        use tempfile::TempDir;
         use crate::context::ContextManager;
         use std::fs;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("pretty.json");
-        
+
         let store = super::Store::new(file_path.clone());
         let manager = ContextManager::new();
-        
+
         // Save the manager
         store.save(&manager).unwrap();
-        
+
         // Read the file contents
         let contents = fs::read_to_string(&file_path).unwrap();
-        
+
         // Verify it's pretty-printed (contains newlines and indentation)
         assert!(contents.contains('\n'));
         assert!(contents.contains("  ")); // Indentation
-        
+
         // Verify it's valid JSON
         let _: StorageData = serde_json::from_str(&contents).unwrap();
     }
@@ -1201,79 +1204,79 @@ mod tests {
     #[test]
     fn test_store_multiple_contexts_and_tasks() {
         // Test saving and loading multiple contexts with tasks
-        use tempfile::TempDir;
         use crate::context::ContextManager;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("multi.json");
-        
+
         let store = super::Store::new(file_path);
-        
+
         // Create a ContextManager with multiple contexts and tasks
         let mut manager = ContextManager::new();
-        
+
         // Add tasks to default context
         manager.active_context_mut().add_task(Task::new(
             "Default task 1".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         ));
         manager.active_context_mut().add_task(Task::new(
             "Default task 2".to_string(),
             TimeHorizon::MidTerm,
-            Priority::Low
+            Priority::Low,
         ));
-        
+
         // Create work context with tasks
         manager.create_context("work".to_string()).unwrap();
         manager.switch_context("work").unwrap();
         manager.active_context_mut().add_task(Task::new(
             "Work task 1".to_string(),
             TimeHorizon::LongTerm,
-            Priority::Medium
+            Priority::Medium,
         ));
-        
+
         // Create personal context with tasks
         manager.create_context("personal".to_string()).unwrap();
         manager.switch_context("personal").unwrap();
         manager.active_context_mut().add_task(Task::new(
             "Personal task 1".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         ));
         manager.active_context_mut().add_task(Task::new(
             "Personal task 2".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::Medium
+            Priority::Medium,
         ));
-        
+
         // Save the manager
         store.save(&manager).unwrap();
-        
+
         // Load the manager back
         let loaded_manager = store.load().unwrap();
-        
+
         // Verify all contexts were loaded
         assert_eq!(loaded_manager.contexts.len(), 3);
         assert!(loaded_manager.contexts.contains_key("default"));
         assert!(loaded_manager.contexts.contains_key("work"));
         assert!(loaded_manager.contexts.contains_key("personal"));
-        
+
         // Verify active context
         assert_eq!(loaded_manager.active_context, "personal");
-        
+
         // Verify default context tasks
         let default_ctx = loaded_manager.contexts.get("default").unwrap();
         assert_eq!(default_ctx.tasks.len(), 2);
         assert_eq!(default_ctx.tasks[0].description, "Default task 1");
         assert_eq!(default_ctx.tasks[1].description, "Default task 2");
-        
+
         // Verify work context tasks
         let work_ctx = loaded_manager.contexts.get("work").unwrap();
         assert_eq!(work_ctx.tasks.len(), 1);
         assert_eq!(work_ctx.tasks[0].description, "Work task 1");
-        
+
         // Verify personal context tasks
         let personal_ctx = loaded_manager.contexts.get("personal").unwrap();
         assert_eq!(personal_ctx.tasks.len(), 2);
@@ -1284,26 +1287,26 @@ mod tests {
     #[test]
     fn test_store_atomic_write() {
         // Test that save uses atomic write (temporary file + rename)
-        use tempfile::TempDir;
         use crate::context::ContextManager;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("atomic.json");
-        
+
         let store = super::Store::new(file_path.clone());
-        
+
         // Save initial data
         let manager = ContextManager::new();
         store.save(&manager).unwrap();
-        
+
         // Verify the main file exists
         assert!(file_path.exists());
-        
+
         // Verify the temporary file doesn't exist after save
         let temp_path = file_path.with_extension("json.tmp");
         assert!(!temp_path.exists());
-        
+
         // Save again to verify the temporary file is cleaned up
         store.save(&manager).unwrap();
         assert!(!temp_path.exists());
@@ -1312,35 +1315,35 @@ mod tests {
     #[test]
     fn test_store_preserves_task_metadata() {
         // Test that save/load preserves all task metadata
-        use tempfile::TempDir;
         use crate::context::ContextManager;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("metadata.json");
-        
+
         let store = super::Store::new(file_path);
-        
+
         // Create a task with specific metadata
         let mut manager = ContextManager::new();
         let task = Task::new(
             "Test task with metadata".to_string(),
             TimeHorizon::MidTerm,
-            Priority::Low
+            Priority::Low,
         );
         let task_id = task.id.clone();
         let task_created_at = task.created_at.clone();
         manager.active_context_mut().add_task(task);
-        
+
         // Mark the task as complete
         if let Some(task) = manager.active_context_mut().find_task_mut(&task_id) {
             task.mark_complete();
         }
-        
+
         // Save and load
         store.save(&manager).unwrap();
         let loaded_manager = store.load().unwrap();
-        
+
         // Verify all metadata was preserved
         let loaded_task = loaded_manager.active_context().find_task(&task_id).unwrap();
         assert_eq!(loaded_task.id, task_id);
@@ -1354,16 +1357,16 @@ mod tests {
     #[test]
     fn test_store_export_to_custom_path() {
         // Test exporting to a custom file path
-        use tempfile::TempDir;
         use crate::context::ContextManager;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
         let export_path = temp_dir.path().join("export.json");
-        
+
         let store = super::Store::new(store_path);
-        
+
         // Create a ContextManager with some data
         let mut manager = ContextManager::new();
         manager.create_context("work".to_string()).unwrap();
@@ -1371,24 +1374,24 @@ mod tests {
         manager.active_context_mut().add_task(Task::new(
             "Export test task".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         ));
-        
+
         // Export to custom path
         store.export(&manager, &export_path).unwrap();
-        
+
         // Verify the export file was created
         assert!(export_path.exists());
-        
+
         // Verify the export file contains valid JSON
         let contents = std::fs::read_to_string(&export_path).unwrap();
         let data: StorageData = serde_json::from_str(&contents).unwrap();
-        
+
         // Verify the exported data matches
         assert_eq!(data.version, "1.0.0");
         assert_eq!(data.active_context, "work");
         assert_eq!(data.contexts.len(), 2); // default + work
-        
+
         // Verify the task was exported
         let work_ctx = data.contexts.get("work").unwrap();
         assert_eq!(work_ctx.tasks.len(), 1);
@@ -1398,23 +1401,27 @@ mod tests {
     #[test]
     fn test_store_export_creates_directory() {
         // Test that export creates parent directories if needed
-        use tempfile::TempDir;
         use crate::context::ContextManager;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
-        let export_path = temp_dir.path().join("exports").join("backup").join("export.json");
-        
+        let export_path = temp_dir
+            .path()
+            .join("exports")
+            .join("backup")
+            .join("export.json");
+
         // Verify the nested directories don't exist yet
         assert!(!export_path.parent().unwrap().exists());
-        
+
         let store = super::Store::new(store_path);
         let manager = ContextManager::new();
-        
+
         // Export should create the directories
         store.export(&manager, &export_path).unwrap();
-        
+
         // Verify the directories were created
         assert!(export_path.parent().unwrap().exists());
         assert!(export_path.exists());
@@ -1423,23 +1430,23 @@ mod tests {
     #[test]
     fn test_store_export_pretty_json() {
         // Test that export creates pretty-printed JSON
-        use tempfile::TempDir;
         use crate::context::ContextManager;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
         let export_path = temp_dir.path().join("export.json");
-        
+
         let store = super::Store::new(store_path);
         let manager = ContextManager::new();
-        
+
         // Export the manager
         store.export(&manager, &export_path).unwrap();
-        
+
         // Read the file contents
         let contents = std::fs::read_to_string(&export_path).unwrap();
-        
+
         // Verify it's pretty-printed (contains newlines and indentation)
         assert!(contents.contains('\n'));
         assert!(contents.contains("  ")); // Indentation
@@ -1448,60 +1455,60 @@ mod tests {
     #[test]
     fn test_store_export_multiple_contexts() {
         // Test exporting multiple contexts with tasks
-        use tempfile::TempDir;
         use crate::context::ContextManager;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
         let export_path = temp_dir.path().join("export.json");
-        
+
         let store = super::Store::new(store_path);
-        
+
         // Create a ContextManager with multiple contexts and tasks
         let mut manager = ContextManager::new();
-        
+
         // Add tasks to default context
         manager.active_context_mut().add_task(Task::new(
             "Default task".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         ));
-        
+
         // Create work context with tasks
         manager.create_context("work".to_string()).unwrap();
         manager.switch_context("work").unwrap();
         manager.active_context_mut().add_task(Task::new(
             "Work task".to_string(),
             TimeHorizon::MidTerm,
-            Priority::Medium
+            Priority::Medium,
         ));
-        
+
         // Create personal context with tasks
         manager.create_context("personal".to_string()).unwrap();
         manager.switch_context("personal").unwrap();
         manager.active_context_mut().add_task(Task::new(
             "Personal task".to_string(),
             TimeHorizon::LongTerm,
-            Priority::Low
+            Priority::Low,
         ));
-        
+
         // Export the manager
         store.export(&manager, &export_path).unwrap();
-        
+
         // Read and verify the export
         let contents = std::fs::read_to_string(&export_path).unwrap();
         let data: StorageData = serde_json::from_str(&contents).unwrap();
-        
+
         // Verify all contexts were exported
         assert_eq!(data.contexts.len(), 3);
         assert!(data.contexts.contains_key("default"));
         assert!(data.contexts.contains_key("work"));
         assert!(data.contexts.contains_key("personal"));
-        
+
         // Verify active context
         assert_eq!(data.active_context, "personal");
-        
+
         // Verify tasks in each context
         assert_eq!(data.contexts.get("default").unwrap().tasks.len(), 1);
         assert_eq!(data.contexts.get("work").unwrap().tasks.len(), 1);
@@ -1511,14 +1518,14 @@ mod tests {
     #[test]
     fn test_store_import_from_file() {
         // Test importing from a file
-        use tempfile::TempDir;
         use std::fs;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
         let import_path = temp_dir.path().join("import.json");
-        
+
         // Create a valid JSON file to import
         let json = r#"{
             "version": "1.0.0",
@@ -1544,18 +1551,18 @@ mod tests {
             }
         }"#;
         fs::write(&import_path, json).unwrap();
-        
+
         let store = super::Store::new(store_path);
-        
+
         // Import the file
         let manager = store.import(&import_path).unwrap();
-        
+
         // Verify the imported data
         assert_eq!(manager.active_context, "work");
         assert_eq!(manager.contexts.len(), 2);
         assert!(manager.contexts.contains_key("default"));
         assert!(manager.contexts.contains_key("work"));
-        
+
         // Verify the imported task
         let work_ctx = manager.contexts.get("work").unwrap();
         assert_eq!(work_ctx.tasks.len(), 1);
@@ -1566,23 +1573,23 @@ mod tests {
     #[test]
     fn test_store_import_invalid_json() {
         // Test importing a file with invalid JSON
-        use tempfile::TempDir;
         use std::fs;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
         let import_path = temp_dir.path().join("invalid.json");
-        
+
         // Write invalid JSON to the file
         fs::write(&import_path, "{ invalid json }").unwrap();
-        
+
         let store = super::Store::new(store_path);
-        
+
         // Import should return an error
         let result = store.import(&import_path);
         assert!(result.is_err());
-        
+
         // Verify it's a JSON error
         match result {
             Err(crate::error::AppError::JsonError(_)) => {
@@ -1596,18 +1603,18 @@ mod tests {
     fn test_store_import_missing_file() {
         // Test importing a file that doesn't exist
         use tempfile::TempDir;
-        
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
         let import_path = temp_dir.path().join("nonexistent.json");
-        
+
         let store = super::Store::new(store_path);
-        
+
         // Import should return an error
         let result = store.import(&import_path);
         assert!(result.is_err());
-        
+
         // Verify it's an IO error
         match result {
             Err(crate::error::AppError::IoError(_)) => {
@@ -1620,19 +1627,19 @@ mod tests {
     #[test]
     fn test_store_import_invalid_structure() {
         // Test importing a file with valid JSON but invalid structure
-        use tempfile::TempDir;
         use std::fs;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
         let import_path = temp_dir.path().join("invalid-structure.json");
-        
+
         // Write JSON with missing required fields
         fs::write(&import_path, r#"{"version": "1.0.0"}"#).unwrap();
-        
+
         let store = super::Store::new(store_path);
-        
+
         // Import should return an error
         let result = store.import(&import_path);
         assert!(result.is_err());
@@ -1641,14 +1648,14 @@ mod tests {
     #[test]
     fn test_store_import_invalid_active_context() {
         // Test importing a file where active_context doesn't exist in contexts
-        use tempfile::TempDir;
         use std::fs;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
         let import_path = temp_dir.path().join("invalid-active.json");
-        
+
         // Write JSON with invalid active_context
         let json = r#"{
             "version": "1.0.0",
@@ -1661,13 +1668,13 @@ mod tests {
             }
         }"#;
         fs::write(&import_path, json).unwrap();
-        
+
         let store = super::Store::new(store_path);
-        
+
         // Import should return an error
         let result = store.import(&import_path);
         assert!(result.is_err());
-        
+
         // Verify it's an InvalidDataFormat error
         match result {
             Err(crate::error::AppError::InvalidDataFormat(msg)) => {
@@ -1680,52 +1687,52 @@ mod tests {
     #[test]
     fn test_store_export_import_round_trip() {
         // Test that export and import preserve all data
-        use tempfile::TempDir;
         use crate::context::ContextManager;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
         let export_path = temp_dir.path().join("export.json");
-        
+
         let store = super::Store::new(store_path);
-        
+
         // Create a ContextManager with complex data
         let mut manager = ContextManager::new();
-        
+
         // Add tasks to default context
         manager.active_context_mut().add_task(Task::new(
             "Default task 1".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         ));
         let mut task2 = Task::new(
             "Default task 2".to_string(),
             TimeHorizon::MidTerm,
-            Priority::Low
+            Priority::Low,
         );
         task2.mark_complete();
         manager.active_context_mut().add_task(task2);
-        
+
         // Create work context with tasks
         manager.create_context("work".to_string()).unwrap();
         manager.switch_context("work").unwrap();
         manager.active_context_mut().add_task(Task::new(
             "Work task".to_string(),
             TimeHorizon::LongTerm,
-            Priority::Medium
+            Priority::Medium,
         ));
-        
+
         // Export the manager
         store.export(&manager, &export_path).unwrap();
-        
+
         // Import it back
         let imported_manager = store.import(&export_path).unwrap();
-        
+
         // Verify all data was preserved
         assert_eq!(imported_manager.active_context, manager.active_context);
         assert_eq!(imported_manager.contexts.len(), manager.contexts.len());
-        
+
         // Verify default context tasks
         let default_ctx = imported_manager.contexts.get("default").unwrap();
         assert_eq!(default_ctx.tasks.len(), 2);
@@ -1733,7 +1740,7 @@ mod tests {
         assert_eq!(default_ctx.tasks[0].completed, false);
         assert_eq!(default_ctx.tasks[1].description, "Default task 2");
         assert_eq!(default_ctx.tasks[1].completed, true);
-        
+
         // Verify work context tasks
         let work_ctx = imported_manager.contexts.get("work").unwrap();
         assert_eq!(work_ctx.tasks.len(), 1);
@@ -1743,14 +1750,14 @@ mod tests {
     #[test]
     fn test_store_import_preserves_task_metadata() {
         // Test that import preserves all task metadata (ID, timestamps, etc.)
-        use tempfile::TempDir;
         use std::fs;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
         let import_path = temp_dir.path().join("import.json");
-        
+
         // Create a JSON file with specific task metadata
         let json = r#"{
             "version": "1.0.0",
@@ -1772,12 +1779,12 @@ mod tests {
             }
         }"#;
         fs::write(&import_path, json).unwrap();
-        
+
         let store = super::Store::new(store_path);
-        
+
         // Import the file
         let manager = store.import(&import_path).unwrap();
-        
+
         // Verify all metadata was preserved
         let task = &manager.contexts.get("default").unwrap().tasks[0];
         assert_eq!(task.id, "abc123-def456-ghi789");
@@ -1791,14 +1798,14 @@ mod tests {
     #[test]
     fn test_store_import_empty_contexts() {
         // Test importing contexts with no tasks
-        use tempfile::TempDir;
         use std::fs;
-        
+        use tempfile::TempDir;
+
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
         let store_path = temp_dir.path().join("data.json");
         let import_path = temp_dir.path().join("empty.json");
-        
+
         // Create a JSON file with empty contexts
         let json = r#"{
             "version": "1.0.0",
@@ -1815,12 +1822,12 @@ mod tests {
             }
         }"#;
         fs::write(&import_path, json).unwrap();
-        
+
         let store = super::Store::new(store_path);
-        
+
         // Import the file
         let manager = store.import(&import_path).unwrap();
-        
+
         // Verify contexts were imported
         assert_eq!(manager.contexts.len(), 2);
         assert_eq!(manager.contexts.get("default").unwrap().tasks.len(), 0);

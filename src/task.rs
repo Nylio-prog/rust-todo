@@ -1,9 +1,9 @@
 // Task module - defines the core Task data structure and related types
 // This module demonstrates Rust's enum types, struct definitions, and trait implementations
 
+use crate::error::AppError;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use crate::error::AppError;
 
 /// Represents the time horizon for task completion
 ///
@@ -130,19 +130,19 @@ impl FromStr for Priority {
 pub struct Task {
     /// Unique identifier for the task (UUID v4 format)
     pub id: String,
-    
+
     /// The task's description text
     pub description: String,
-    
+
     /// Time horizon for completion
     pub time_horizon: TimeHorizon,
-    
+
     /// Priority level
     pub priority: Priority,
-    
+
     /// Whether the task is completed
     pub completed: bool,
-    
+
     /// ISO 8601 timestamp of task creation
     pub created_at: String,
 }
@@ -185,12 +185,12 @@ impl Task {
         // The uuid crate provides this functionality
         // We convert it to a String for easy storage and display
         let id = uuid::Uuid::new_v4().to_string();
-        
+
         // Get the current UTC time and format it as ISO 8601
         // ISO 8601 is a standard format: "2024-01-15T10:30:00Z"
         // Using UTC ensures consistency across time zones
         let created_at = chrono::Utc::now().to_rfc3339();
-        
+
         // Construct and return the Task
         // Note: We use 'Self' as shorthand for 'Task'
         // All fields must be initialized (Rust doesn't allow uninitialized fields)
@@ -199,7 +199,7 @@ impl Task {
             description,
             time_horizon,
             priority,
-            completed: false,  // New tasks start as incomplete
+            completed: false, // New tasks start as incomplete
             created_at,
         }
     }
@@ -303,26 +303,26 @@ impl Task {
         // Use if let to check if a new value was provided
         // if let Some(value) = option { ... } is Rust's way of handling Option types
         // It's more concise than match when we only care about the Some case
-        
+
         // Update description if provided
         if let Some(new_description) = description {
             // Take ownership of the new String and assign it to self.description
             // The old description is automatically dropped (memory freed)
             self.description = new_description;
         }
-        
+
         // Update time horizon if provided
         if let Some(new_horizon) = time_horizon {
             // TimeHorizon is Copy, so this is a simple value copy
             self.time_horizon = new_horizon;
         }
-        
+
         // Update priority if provided
         if let Some(new_priority) = priority {
             // Priority is also Copy, so this is a simple value copy
             self.priority = new_priority;
         }
-        
+
         // Note: Fields not provided (None) remain unchanged
         // This is the power of Option<T> - explicit optional parameters
     }
@@ -335,18 +335,42 @@ mod tests {
     #[test]
     fn test_time_horizon_from_str() {
         // Test valid inputs
-        assert_eq!(TimeHorizon::from_str("short").unwrap(), TimeHorizon::ShortTerm);
-        assert_eq!(TimeHorizon::from_str("ShortTerm").unwrap(), TimeHorizon::ShortTerm);
-        assert_eq!(TimeHorizon::from_str("short-term").unwrap(), TimeHorizon::ShortTerm);
-        
+        assert_eq!(
+            TimeHorizon::from_str("short").unwrap(),
+            TimeHorizon::ShortTerm
+        );
+        assert_eq!(
+            TimeHorizon::from_str("ShortTerm").unwrap(),
+            TimeHorizon::ShortTerm
+        );
+        assert_eq!(
+            TimeHorizon::from_str("short-term").unwrap(),
+            TimeHorizon::ShortTerm
+        );
+
         assert_eq!(TimeHorizon::from_str("mid").unwrap(), TimeHorizon::MidTerm);
-        assert_eq!(TimeHorizon::from_str("MidTerm").unwrap(), TimeHorizon::MidTerm);
-        assert_eq!(TimeHorizon::from_str("mid-term").unwrap(), TimeHorizon::MidTerm);
-        
-        assert_eq!(TimeHorizon::from_str("long").unwrap(), TimeHorizon::LongTerm);
-        assert_eq!(TimeHorizon::from_str("LongTerm").unwrap(), TimeHorizon::LongTerm);
-        assert_eq!(TimeHorizon::from_str("long-term").unwrap(), TimeHorizon::LongTerm);
-        
+        assert_eq!(
+            TimeHorizon::from_str("MidTerm").unwrap(),
+            TimeHorizon::MidTerm
+        );
+        assert_eq!(
+            TimeHorizon::from_str("mid-term").unwrap(),
+            TimeHorizon::MidTerm
+        );
+
+        assert_eq!(
+            TimeHorizon::from_str("long").unwrap(),
+            TimeHorizon::LongTerm
+        );
+        assert_eq!(
+            TimeHorizon::from_str("LongTerm").unwrap(),
+            TimeHorizon::LongTerm
+        );
+        assert_eq!(
+            TimeHorizon::from_str("long-term").unwrap(),
+            TimeHorizon::LongTerm
+        );
+
         // Test invalid input
         assert!(TimeHorizon::from_str("invalid").is_err());
         assert!(TimeHorizon::from_str("").is_err());
@@ -358,17 +382,17 @@ mod tests {
         assert_eq!(Priority::from_str("low").unwrap(), Priority::Low);
         assert_eq!(Priority::from_str("Low").unwrap(), Priority::Low);
         assert_eq!(Priority::from_str("l").unwrap(), Priority::Low);
-        
+
         assert_eq!(Priority::from_str("medium").unwrap(), Priority::Medium);
         assert_eq!(Priority::from_str("Medium").unwrap(), Priority::Medium);
         assert_eq!(Priority::from_str("med").unwrap(), Priority::Medium);
         assert_eq!(Priority::from_str("m").unwrap(), Priority::Medium);
-        
+
         assert_eq!(Priority::from_str("high").unwrap(), Priority::High);
         assert_eq!(Priority::from_str("High").unwrap(), Priority::High);
         assert_eq!(Priority::from_str("hi").unwrap(), Priority::High);
         assert_eq!(Priority::from_str("h").unwrap(), Priority::High);
-        
+
         // Test invalid input
         assert!(Priority::from_str("invalid").is_err());
         assert!(Priority::from_str("").is_err());
@@ -380,11 +404,14 @@ mod tests {
         assert!(Priority::High > Priority::Medium);
         assert!(Priority::Medium > Priority::Low);
         assert!(Priority::High > Priority::Low);
-        
+
         // Test sorting
         let mut priorities = vec![Priority::Low, Priority::High, Priority::Medium];
         priorities.sort();
-        assert_eq!(priorities, vec![Priority::Low, Priority::Medium, Priority::High]);
+        assert_eq!(
+            priorities,
+            vec![Priority::Low, Priority::Medium, Priority::High]
+        );
     }
 
     #[test]
@@ -393,7 +420,7 @@ mod tests {
         let horizon = TimeHorizon::ShortTerm;
         let json = serde_json::to_string(&horizon).unwrap();
         assert_eq!(json, "\"ShortTerm\"");
-        
+
         let priority = Priority::High;
         let json = serde_json::to_string(&priority).unwrap();
         assert_eq!(json, "\"High\"");
@@ -404,7 +431,7 @@ mod tests {
         // Test that enums can be deserialized from JSON
         let horizon: TimeHorizon = serde_json::from_str("\"ShortTerm\"").unwrap();
         assert_eq!(horizon, TimeHorizon::ShortTerm);
-        
+
         let priority: Priority = serde_json::from_str("\"High\"").unwrap();
         assert_eq!(priority, Priority::High);
     }
@@ -415,19 +442,19 @@ mod tests {
         let task = Task::new(
             "Write tests".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::High
+            Priority::High,
         );
-        
+
         // Verify all fields are set correctly
         assert_eq!(task.description, "Write tests");
         assert_eq!(task.time_horizon, TimeHorizon::ShortTerm);
         assert_eq!(task.priority, Priority::High);
         assert_eq!(task.completed, false);
-        
+
         // Verify ID is a valid UUID (36 characters with hyphens)
         assert_eq!(task.id.len(), 36);
         assert!(task.id.contains('-'));
-        
+
         // Verify created_at is not empty and looks like ISO 8601
         assert!(!task.created_at.is_empty());
         assert!(task.created_at.contains('T'));
@@ -440,14 +467,14 @@ mod tests {
         let task1 = Task::new(
             "Task 1".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::Medium
+            Priority::Medium,
         );
         let task2 = Task::new(
             "Task 2".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::Medium
+            Priority::Medium,
         );
-        
+
         // IDs should be different
         assert_ne!(task1.id, task2.id);
     }
@@ -455,14 +482,10 @@ mod tests {
     #[test]
     fn test_task_serialization() {
         // Test that Task can be serialized to JSON
-        let task = Task::new(
-            "Test task".to_string(),
-            TimeHorizon::MidTerm,
-            Priority::Low
-        );
-        
+        let task = Task::new("Test task".to_string(), TimeHorizon::MidTerm, Priority::Low);
+
         let json = serde_json::to_string(&task).unwrap();
-        
+
         // Verify JSON contains expected fields
         assert!(json.contains("\"id\""));
         assert!(json.contains("\"description\""));
@@ -486,9 +509,9 @@ mod tests {
             "completed": true,
             "created_at": "2024-01-15T10:30:00Z"
         }"#;
-        
+
         let task: Task = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(task.id, "123e4567-e89b-12d3-a456-426614174000");
         assert_eq!(task.description, "Test task");
         assert_eq!(task.time_horizon, TimeHorizon::LongTerm);
@@ -500,10 +523,22 @@ mod tests {
     #[test]
     fn test_task_with_different_priorities() {
         // Test creating tasks with all priority levels
-        let low = Task::new("Low priority".to_string(), TimeHorizon::ShortTerm, Priority::Low);
-        let med = Task::new("Med priority".to_string(), TimeHorizon::ShortTerm, Priority::Medium);
-        let high = Task::new("High priority".to_string(), TimeHorizon::ShortTerm, Priority::High);
-        
+        let low = Task::new(
+            "Low priority".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::Low,
+        );
+        let med = Task::new(
+            "Med priority".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::Medium,
+        );
+        let high = Task::new(
+            "High priority".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::High,
+        );
+
         assert_eq!(low.priority, Priority::Low);
         assert_eq!(med.priority, Priority::Medium);
         assert_eq!(high.priority, Priority::High);
@@ -512,10 +547,22 @@ mod tests {
     #[test]
     fn test_task_with_different_horizons() {
         // Test creating tasks with all time horizons
-        let short = Task::new("Short term".to_string(), TimeHorizon::ShortTerm, Priority::Medium);
-        let mid = Task::new("Mid term".to_string(), TimeHorizon::MidTerm, Priority::Medium);
-        let long = Task::new("Long term".to_string(), TimeHorizon::LongTerm, Priority::Medium);
-        
+        let short = Task::new(
+            "Short term".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::Medium,
+        );
+        let mid = Task::new(
+            "Mid term".to_string(),
+            TimeHorizon::MidTerm,
+            Priority::Medium,
+        );
+        let long = Task::new(
+            "Long term".to_string(),
+            TimeHorizon::LongTerm,
+            Priority::Medium,
+        );
+
         assert_eq!(short.time_horizon, TimeHorizon::ShortTerm);
         assert_eq!(mid.time_horizon, TimeHorizon::MidTerm);
         assert_eq!(long.time_horizon, TimeHorizon::LongTerm);
@@ -527,18 +574,18 @@ mod tests {
         let mut task = Task::new(
             "Complete this task".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::Medium
+            Priority::Medium,
         );
-        
+
         // Initially, task should not be completed
         assert_eq!(task.completed, false);
-        
+
         // Mark the task as complete
         task.mark_complete();
-        
+
         // Now it should be completed
         assert_eq!(task.completed, true);
-        
+
         // Marking complete again should have no effect (idempotent)
         task.mark_complete();
         assert_eq!(task.completed, true);
@@ -550,18 +597,18 @@ mod tests {
         let mut task = Task::new(
             "Original description".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::Low
+            Priority::Low,
         );
-        
+
         let original_horizon = task.time_horizon;
         let original_priority = task.priority;
-        
+
         // Update only the description
         task.update(Some("New description".to_string()), None, None);
-        
+
         // Description should be updated
         assert_eq!(task.description, "New description");
-        
+
         // Other fields should remain unchanged
         assert_eq!(task.time_horizon, original_horizon);
         assert_eq!(task.priority, original_priority);
@@ -573,18 +620,18 @@ mod tests {
         let mut task = Task::new(
             "Test task".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::Medium
+            Priority::Medium,
         );
-        
+
         let original_description = task.description.clone();
         let original_priority = task.priority;
-        
+
         // Update only the time horizon
         task.update(None, Some(TimeHorizon::LongTerm), None);
-        
+
         // Time horizon should be updated
         assert_eq!(task.time_horizon, TimeHorizon::LongTerm);
-        
+
         // Other fields should remain unchanged
         assert_eq!(task.description, original_description);
         assert_eq!(task.priority, original_priority);
@@ -593,21 +640,17 @@ mod tests {
     #[test]
     fn test_update_priority() {
         // Test updating only the priority
-        let mut task = Task::new(
-            "Test task".to_string(),
-            TimeHorizon::MidTerm,
-            Priority::Low
-        );
-        
+        let mut task = Task::new("Test task".to_string(), TimeHorizon::MidTerm, Priority::Low);
+
         let original_description = task.description.clone();
         let original_horizon = task.time_horizon;
-        
+
         // Update only the priority
         task.update(None, None, Some(Priority::High));
-        
+
         // Priority should be updated
         assert_eq!(task.priority, Priority::High);
-        
+
         // Other fields should remain unchanged
         assert_eq!(task.description, original_description);
         assert_eq!(task.time_horizon, original_horizon);
@@ -619,16 +662,16 @@ mod tests {
         let mut task = Task::new(
             "Original".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::Low
+            Priority::Low,
         );
-        
+
         // Update all three fields
         task.update(
             Some("Updated description".to_string()),
             Some(TimeHorizon::LongTerm),
-            Some(Priority::High)
+            Some(Priority::High),
         );
-        
+
         // All fields should be updated
         assert_eq!(task.description, "Updated description");
         assert_eq!(task.time_horizon, TimeHorizon::LongTerm);
@@ -641,16 +684,16 @@ mod tests {
         let mut task = Task::new(
             "Test task".to_string(),
             TimeHorizon::MidTerm,
-            Priority::Medium
+            Priority::Medium,
         );
-        
+
         let original_description = task.description.clone();
         let original_horizon = task.time_horizon;
         let original_priority = task.priority;
-        
+
         // Call update with no changes
         task.update(None, None, None);
-        
+
         // All fields should remain unchanged
         assert_eq!(task.description, original_description);
         assert_eq!(task.time_horizon, original_horizon);
@@ -663,20 +706,20 @@ mod tests {
         let mut task = Task::new(
             "Test task".to_string(),
             TimeHorizon::ShortTerm,
-            Priority::Low
+            Priority::Low,
         );
-        
+
         let original_id = task.id.clone();
         let original_created_at = task.created_at.clone();
         let original_completed = task.completed;
-        
+
         // Update some fields
         task.update(
             Some("New description".to_string()),
             Some(TimeHorizon::LongTerm),
-            Some(Priority::High)
+            Some(Priority::High),
         );
-        
+
         // ID, created_at, and completed should remain unchanged
         assert_eq!(task.id, original_id);
         assert_eq!(task.created_at, original_created_at);
