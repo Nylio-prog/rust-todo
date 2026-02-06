@@ -584,6 +584,193 @@ impl Store {
         // Return success
         Ok(())
     }
+
+    /// Exports the ContextManager to a specified file
+    ///
+    /// This method demonstrates:
+    /// - Exporting data to a custom location
+    /// - Reusing serialization logic from save()
+    /// - Working with Path references
+    ///
+    /// # Export vs Save
+    ///
+    /// The export() method is similar to save(), but:
+    /// - It writes to a user-specified path instead of the default data file
+    /// - It's used for creating backups or sharing task lists
+    /// - It doesn't modify the Store's file_path field
+    ///
+    /// # Path vs PathBuf
+    ///
+    /// The method takes &Path (borrowed path) rather than PathBuf (owned path)
+    /// because:
+    /// - We only need to read the path, not own it
+    /// - The caller retains ownership of their PathBuf
+    /// - It's more flexible (accepts &PathBuf, &Path, or path literals)
+    ///
+    /// # Arguments
+    ///
+    /// * `manager` - A reference to the ContextManager to export
+    /// * `export_path` - The path where the export file should be created
+    ///
+    /// # Returns
+    ///
+    /// Ok(()) if the export was successful.
+    ///
+    /// Err(AppError) if:
+    /// - The parent directory can't be created (permissions, disk full)
+    /// - The file can't be written (permissions, disk full)
+    /// - Serialization fails (should never happen with valid data)
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::path::{Path, PathBuf};
+    /// use rust_todo::store::Store;
+    /// use rust_todo::context::ContextManager;
+    ///
+    /// let store = Store::new(PathBuf::from("data.json"));
+    /// let manager = ContextManager::new();
+    ///
+    /// // Export to a backup file
+    /// store.export(&manager, Path::new("backup.json")).unwrap();
+    /// ```
+    ///
+    /// # Requirements
+    ///
+    /// This method satisfies:
+    /// - Requirement 4.5: Export tasks to JSON file
+    /// - Requirement 6.1: Create JSON file with all contexts and tasks
+    pub fn export(&self, manager: &crate::context::ContextManager, export_path: &std::path::Path) -> crate::error::Result<()> {
+        // Create the parent directory if it doesn't exist
+        // This is the same logic as in save()
+        if let Some(parent) = export_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        // Convert ContextManager to StorageData
+        // This adds the version field and prepares for serialization
+        let data = StorageData::new(
+            manager.contexts.clone(),
+            manager.active_context.clone(),
+        );
+
+        // Serialize to JSON with pretty printing
+        // Pretty printing makes the export file human-readable
+        let json = serde_json::to_string_pretty(&data)?;
+
+        // Write directly to the export file
+        // Unlike save(), we don't use atomic write here because:
+        // 1. We're not overwriting the main data file
+        // 2. Export is typically a one-time operation
+        // 3. If export fails, the main data file is unaffected
+        std::fs::write(export_path, json)?;
+
+        // Return success
+        Ok(())
+    }
+
+    /// Imports a ContextManager from a specified file
+    ///
+    /// This method demonstrates:
+    /// - Loading data from a custom location
+    /// - Validating JSON structure before returning
+    /// - Error handling without modifying state
+    ///
+    /// # Import Validation
+    ///
+    /// The import() method validates the JSON structure by:
+    /// 1. Reading the file contents
+    /// 2. Deserializing to StorageData (validates JSON syntax and structure)
+    /// 3. Checking that the active context exists in the contexts HashMap
+    /// 4. Converting to ContextManager
+    ///
+    /// If any step fails, an error is returned and no state is modified.
+    /// This ensures that invalid imports don't corrupt the application state.
+    ///
+    /// # Error Handling Strategy
+    ///
+    /// The method uses the ? operator to propagate errors:
+    /// - File I/O errors (file not found, permissions) → AppError::IoError
+    /// - JSON parsing errors (invalid syntax) → AppError::JsonError
+    /// - Structure validation errors → AppError::InvalidDataFormat
+    ///
+    /// All errors are returned before any state modification, following the
+    /// principle of "validate first, modify later".
+    ///
+    /// # Arguments
+    ///
+    /// * `import_path` - The path to the JSON file to import
+    ///
+    /// # Returns
+    ///
+    /// Ok(ContextManager) with the imported data if successful.
+    ///
+    /// Err(AppError) if:
+    /// - The file doesn't exist or can't be read
+    /// - The file contains invalid JSON
+    /// - The JSON has an invalid structure (missing fields, wrong types)
+    /// - The active context doesn't exist in the contexts HashMap
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::path::{Path, PathBuf};
+    /// use rust_todo::store::Store;
+    ///
+    /// let store = Store::new(PathBuf::from("data.json"));
+    ///
+    /// // Import from a backup file
+    /// match store.import(Path::new("backup.json")) {
+    ///     Ok(manager) => {
+    ///         println!("Imported {} contexts", manager.contexts.len());
+    ///         // Now you can merge or replace the current data
+    ///     }
+    ///     Err(e) => {
+    ///         eprintln!("Failed to import: {}", e);
+    ///         // Current state is unchanged
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// # Requirements
+    ///
+    /// This method satisfies:
+    /// - Requirement 6.2: Validate JSON structure before importing
+    /// - Requirement 6.3: Deserialize to ContextManager
+    /// - Requirement 6.5: Return error if invalid without modifying state
+    pub fn import(&self, import_path: &std::path::Path) -> crate::error::Result<crate::context::ContextManager> {
+        // Read the file contents as a String
+        // If the file doesn't exist or can't be read, return an error
+        // The ? operator converts io::Error to AppError::IoError
+        let contents = std::fs::read_to_string(import_path)?;
+
+        // Deserialize the JSON to StorageData
+        // This validates the JSON syntax and structure
+        // The ? operator converts serde_json::Error to AppError::JsonError
+        let data: StorageData = serde_json::from_str(&contents)?;
+
+        // Validate that the active context exists in the contexts HashMap
+        // This ensures data integrity and prevents invalid state
+        if !data.contexts.contains_key(&data.active_context) {
+            return Err(crate::error::AppError::InvalidDataFormat(
+                format!(
+                    "Active context '{}' does not exist in contexts",
+                    data.active_context
+                ),
+            ));
+        }
+
+        // Convert StorageData to ContextManager
+        // This is a simple field-by-field copy since the structures match
+        let manager = crate::context::ContextManager {
+            contexts: data.contexts,
+            active_context: data.active_context,
+        };
+
+        // Return the imported ContextManager
+        // The caller can decide whether to merge or replace their current data
+        Ok(manager)
+    }
 }
 
 #[cfg(test)]
@@ -1162,5 +1349,481 @@ mod tests {
         assert_eq!(loaded_task.priority, Priority::Low);
         assert_eq!(loaded_task.completed, true);
         assert_eq!(loaded_task.created_at, task_created_at);
+    }
+
+    #[test]
+    fn test_store_export_to_custom_path() {
+        // Test exporting to a custom file path
+        use tempfile::TempDir;
+        use crate::context::ContextManager;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let export_path = temp_dir.path().join("export.json");
+        
+        let store = super::Store::new(store_path);
+        
+        // Create a ContextManager with some data
+        let mut manager = ContextManager::new();
+        manager.create_context("work".to_string()).unwrap();
+        manager.switch_context("work").unwrap();
+        manager.active_context_mut().add_task(Task::new(
+            "Export test task".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::High
+        ));
+        
+        // Export to custom path
+        store.export(&manager, &export_path).unwrap();
+        
+        // Verify the export file was created
+        assert!(export_path.exists());
+        
+        // Verify the export file contains valid JSON
+        let contents = std::fs::read_to_string(&export_path).unwrap();
+        let data: StorageData = serde_json::from_str(&contents).unwrap();
+        
+        // Verify the exported data matches
+        assert_eq!(data.version, "1.0.0");
+        assert_eq!(data.active_context, "work");
+        assert_eq!(data.contexts.len(), 2); // default + work
+        
+        // Verify the task was exported
+        let work_ctx = data.contexts.get("work").unwrap();
+        assert_eq!(work_ctx.tasks.len(), 1);
+        assert_eq!(work_ctx.tasks[0].description, "Export test task");
+    }
+
+    #[test]
+    fn test_store_export_creates_directory() {
+        // Test that export creates parent directories if needed
+        use tempfile::TempDir;
+        use crate::context::ContextManager;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let export_path = temp_dir.path().join("exports").join("backup").join("export.json");
+        
+        // Verify the nested directories don't exist yet
+        assert!(!export_path.parent().unwrap().exists());
+        
+        let store = super::Store::new(store_path);
+        let manager = ContextManager::new();
+        
+        // Export should create the directories
+        store.export(&manager, &export_path).unwrap();
+        
+        // Verify the directories were created
+        assert!(export_path.parent().unwrap().exists());
+        assert!(export_path.exists());
+    }
+
+    #[test]
+    fn test_store_export_pretty_json() {
+        // Test that export creates pretty-printed JSON
+        use tempfile::TempDir;
+        use crate::context::ContextManager;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let export_path = temp_dir.path().join("export.json");
+        
+        let store = super::Store::new(store_path);
+        let manager = ContextManager::new();
+        
+        // Export the manager
+        store.export(&manager, &export_path).unwrap();
+        
+        // Read the file contents
+        let contents = std::fs::read_to_string(&export_path).unwrap();
+        
+        // Verify it's pretty-printed (contains newlines and indentation)
+        assert!(contents.contains('\n'));
+        assert!(contents.contains("  ")); // Indentation
+    }
+
+    #[test]
+    fn test_store_export_multiple_contexts() {
+        // Test exporting multiple contexts with tasks
+        use tempfile::TempDir;
+        use crate::context::ContextManager;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let export_path = temp_dir.path().join("export.json");
+        
+        let store = super::Store::new(store_path);
+        
+        // Create a ContextManager with multiple contexts and tasks
+        let mut manager = ContextManager::new();
+        
+        // Add tasks to default context
+        manager.active_context_mut().add_task(Task::new(
+            "Default task".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::High
+        ));
+        
+        // Create work context with tasks
+        manager.create_context("work".to_string()).unwrap();
+        manager.switch_context("work").unwrap();
+        manager.active_context_mut().add_task(Task::new(
+            "Work task".to_string(),
+            TimeHorizon::MidTerm,
+            Priority::Medium
+        ));
+        
+        // Create personal context with tasks
+        manager.create_context("personal".to_string()).unwrap();
+        manager.switch_context("personal").unwrap();
+        manager.active_context_mut().add_task(Task::new(
+            "Personal task".to_string(),
+            TimeHorizon::LongTerm,
+            Priority::Low
+        ));
+        
+        // Export the manager
+        store.export(&manager, &export_path).unwrap();
+        
+        // Read and verify the export
+        let contents = std::fs::read_to_string(&export_path).unwrap();
+        let data: StorageData = serde_json::from_str(&contents).unwrap();
+        
+        // Verify all contexts were exported
+        assert_eq!(data.contexts.len(), 3);
+        assert!(data.contexts.contains_key("default"));
+        assert!(data.contexts.contains_key("work"));
+        assert!(data.contexts.contains_key("personal"));
+        
+        // Verify active context
+        assert_eq!(data.active_context, "personal");
+        
+        // Verify tasks in each context
+        assert_eq!(data.contexts.get("default").unwrap().tasks.len(), 1);
+        assert_eq!(data.contexts.get("work").unwrap().tasks.len(), 1);
+        assert_eq!(data.contexts.get("personal").unwrap().tasks.len(), 1);
+    }
+
+    #[test]
+    fn test_store_import_from_file() {
+        // Test importing from a file
+        use tempfile::TempDir;
+        use std::fs;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let import_path = temp_dir.path().join("import.json");
+        
+        // Create a valid JSON file to import
+        let json = r#"{
+            "version": "1.0.0",
+            "active_context": "work",
+            "contexts": {
+                "default": {
+                    "name": "default",
+                    "tasks": []
+                },
+                "work": {
+                    "name": "work",
+                    "tasks": [
+                        {
+                            "id": "test-id-123",
+                            "description": "Imported task",
+                            "time_horizon": "ShortTerm",
+                            "priority": "High",
+                            "completed": false,
+                            "created_at": "2024-01-15T10:30:00Z"
+                        }
+                    ]
+                }
+            }
+        }"#;
+        fs::write(&import_path, json).unwrap();
+        
+        let store = super::Store::new(store_path);
+        
+        // Import the file
+        let manager = store.import(&import_path).unwrap();
+        
+        // Verify the imported data
+        assert_eq!(manager.active_context, "work");
+        assert_eq!(manager.contexts.len(), 2);
+        assert!(manager.contexts.contains_key("default"));
+        assert!(manager.contexts.contains_key("work"));
+        
+        // Verify the imported task
+        let work_ctx = manager.contexts.get("work").unwrap();
+        assert_eq!(work_ctx.tasks.len(), 1);
+        assert_eq!(work_ctx.tasks[0].description, "Imported task");
+        assert_eq!(work_ctx.tasks[0].id, "test-id-123");
+    }
+
+    #[test]
+    fn test_store_import_invalid_json() {
+        // Test importing a file with invalid JSON
+        use tempfile::TempDir;
+        use std::fs;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let import_path = temp_dir.path().join("invalid.json");
+        
+        // Write invalid JSON to the file
+        fs::write(&import_path, "{ invalid json }").unwrap();
+        
+        let store = super::Store::new(store_path);
+        
+        // Import should return an error
+        let result = store.import(&import_path);
+        assert!(result.is_err());
+        
+        // Verify it's a JSON error
+        match result {
+            Err(crate::error::AppError::JsonError(_)) => {
+                // Expected
+            }
+            _ => panic!("Expected JsonError"),
+        }
+    }
+
+    #[test]
+    fn test_store_import_missing_file() {
+        // Test importing a file that doesn't exist
+        use tempfile::TempDir;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let import_path = temp_dir.path().join("nonexistent.json");
+        
+        let store = super::Store::new(store_path);
+        
+        // Import should return an error
+        let result = store.import(&import_path);
+        assert!(result.is_err());
+        
+        // Verify it's an IO error
+        match result {
+            Err(crate::error::AppError::IoError(_)) => {
+                // Expected
+            }
+            _ => panic!("Expected IoError"),
+        }
+    }
+
+    #[test]
+    fn test_store_import_invalid_structure() {
+        // Test importing a file with valid JSON but invalid structure
+        use tempfile::TempDir;
+        use std::fs;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let import_path = temp_dir.path().join("invalid-structure.json");
+        
+        // Write JSON with missing required fields
+        fs::write(&import_path, r#"{"version": "1.0.0"}"#).unwrap();
+        
+        let store = super::Store::new(store_path);
+        
+        // Import should return an error
+        let result = store.import(&import_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_store_import_invalid_active_context() {
+        // Test importing a file where active_context doesn't exist in contexts
+        use tempfile::TempDir;
+        use std::fs;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let import_path = temp_dir.path().join("invalid-active.json");
+        
+        // Write JSON with invalid active_context
+        let json = r#"{
+            "version": "1.0.0",
+            "active_context": "nonexistent",
+            "contexts": {
+                "default": {
+                    "name": "default",
+                    "tasks": []
+                }
+            }
+        }"#;
+        fs::write(&import_path, json).unwrap();
+        
+        let store = super::Store::new(store_path);
+        
+        // Import should return an error
+        let result = store.import(&import_path);
+        assert!(result.is_err());
+        
+        // Verify it's an InvalidDataFormat error
+        match result {
+            Err(crate::error::AppError::InvalidDataFormat(msg)) => {
+                assert!(msg.contains("nonexistent"));
+            }
+            _ => panic!("Expected InvalidDataFormat error"),
+        }
+    }
+
+    #[test]
+    fn test_store_export_import_round_trip() {
+        // Test that export and import preserve all data
+        use tempfile::TempDir;
+        use crate::context::ContextManager;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let export_path = temp_dir.path().join("export.json");
+        
+        let store = super::Store::new(store_path);
+        
+        // Create a ContextManager with complex data
+        let mut manager = ContextManager::new();
+        
+        // Add tasks to default context
+        manager.active_context_mut().add_task(Task::new(
+            "Default task 1".to_string(),
+            TimeHorizon::ShortTerm,
+            Priority::High
+        ));
+        let mut task2 = Task::new(
+            "Default task 2".to_string(),
+            TimeHorizon::MidTerm,
+            Priority::Low
+        );
+        task2.mark_complete();
+        manager.active_context_mut().add_task(task2);
+        
+        // Create work context with tasks
+        manager.create_context("work".to_string()).unwrap();
+        manager.switch_context("work").unwrap();
+        manager.active_context_mut().add_task(Task::new(
+            "Work task".to_string(),
+            TimeHorizon::LongTerm,
+            Priority::Medium
+        ));
+        
+        // Export the manager
+        store.export(&manager, &export_path).unwrap();
+        
+        // Import it back
+        let imported_manager = store.import(&export_path).unwrap();
+        
+        // Verify all data was preserved
+        assert_eq!(imported_manager.active_context, manager.active_context);
+        assert_eq!(imported_manager.contexts.len(), manager.contexts.len());
+        
+        // Verify default context tasks
+        let default_ctx = imported_manager.contexts.get("default").unwrap();
+        assert_eq!(default_ctx.tasks.len(), 2);
+        assert_eq!(default_ctx.tasks[0].description, "Default task 1");
+        assert_eq!(default_ctx.tasks[0].completed, false);
+        assert_eq!(default_ctx.tasks[1].description, "Default task 2");
+        assert_eq!(default_ctx.tasks[1].completed, true);
+        
+        // Verify work context tasks
+        let work_ctx = imported_manager.contexts.get("work").unwrap();
+        assert_eq!(work_ctx.tasks.len(), 1);
+        assert_eq!(work_ctx.tasks[0].description, "Work task");
+    }
+
+    #[test]
+    fn test_store_import_preserves_task_metadata() {
+        // Test that import preserves all task metadata (ID, timestamps, etc.)
+        use tempfile::TempDir;
+        use std::fs;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let import_path = temp_dir.path().join("import.json");
+        
+        // Create a JSON file with specific task metadata
+        let json = r#"{
+            "version": "1.0.0",
+            "active_context": "default",
+            "contexts": {
+                "default": {
+                    "name": "default",
+                    "tasks": [
+                        {
+                            "id": "abc123-def456-ghi789",
+                            "description": "Task with metadata",
+                            "time_horizon": "MidTerm",
+                            "priority": "High",
+                            "completed": true,
+                            "created_at": "2024-01-15T10:30:00Z"
+                        }
+                    ]
+                }
+            }
+        }"#;
+        fs::write(&import_path, json).unwrap();
+        
+        let store = super::Store::new(store_path);
+        
+        // Import the file
+        let manager = store.import(&import_path).unwrap();
+        
+        // Verify all metadata was preserved
+        let task = &manager.contexts.get("default").unwrap().tasks[0];
+        assert_eq!(task.id, "abc123-def456-ghi789");
+        assert_eq!(task.description, "Task with metadata");
+        assert_eq!(task.time_horizon, TimeHorizon::MidTerm);
+        assert_eq!(task.priority, Priority::High);
+        assert_eq!(task.completed, true);
+        assert_eq!(task.created_at, "2024-01-15T10:30:00Z");
+    }
+
+    #[test]
+    fn test_store_import_empty_contexts() {
+        // Test importing contexts with no tasks
+        use tempfile::TempDir;
+        use std::fs;
+        
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("data.json");
+        let import_path = temp_dir.path().join("empty.json");
+        
+        // Create a JSON file with empty contexts
+        let json = r#"{
+            "version": "1.0.0",
+            "active_context": "default",
+            "contexts": {
+                "default": {
+                    "name": "default",
+                    "tasks": []
+                },
+                "work": {
+                    "name": "work",
+                    "tasks": []
+                }
+            }
+        }"#;
+        fs::write(&import_path, json).unwrap();
+        
+        let store = super::Store::new(store_path);
+        
+        // Import the file
+        let manager = store.import(&import_path).unwrap();
+        
+        // Verify contexts were imported
+        assert_eq!(manager.contexts.len(), 2);
+        assert_eq!(manager.contexts.get("default").unwrap().tasks.len(), 0);
+        assert_eq!(manager.contexts.get("work").unwrap().tasks.len(), 0);
     }
 }
