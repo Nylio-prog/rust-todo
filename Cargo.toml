@@ -1,0 +1,45 @@
+[package]
+name = "rust-todo"
+version = "0.1.0"
+edition = "2021"
+
+# Binary target for the CLI application
+[[bin]]
+name = "todo"
+path = "src/main.rs"
+
+[dependencies]
+# CLI argument parsing - provides derive macros for command-line interfaces
+clap = { version = "4.5", features = ["derive"] }
+
+# Serialization framework - enables converting Rust structs to/from JSON
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# UUID generation for unique task identifiers
+uuid = { version = "1.10", features = ["v4", "serde"] }
+
+# Date and time handling for task timestamps
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling - provides derive macro for custom error types
+thiserror = "1.0"
+
+# Terminal colors for better user experience
+colored = "2.1"
+
+# Cross-platform directory paths (config, data, cache directories)
+directories = "5.0"
+
+[dev-dependencies]
+# Property-based testing framework
+proptest = "1.5"
+
+# Temporary file and directory creation for tests
+tempfile = "3.12"
+
+# Testing CLI applications - command execution and output assertions
+assert_cmd = "2.0"
+
+# Predicates for assertions in tests
+predicates = "3.1"
